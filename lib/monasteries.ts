@@ -11,6 +11,12 @@ export interface Monastery {
   history: string
   significance: string
   founded: string
+      narration?: {
+        [lang: string]: {
+          text: string
+          audioUrl?: string
+        }
+      }
   architecture: string
   images: string[]
   virtualTour?: {
@@ -31,6 +37,12 @@ export interface Monastery {
         text: string
         sceneId?: string
       }>
+      narration?: {
+        [langCode: string]: {
+          text?: string
+          audioUrl?: string
+        }
+      }
     }>
   }
   audioGuide?: {
@@ -81,6 +93,23 @@ export const monasteries: Monastery[] = [
           id: "main-hall",
           title: "Main Prayer Hall",
           image: "/rumtek-monastery-main-hall-360-view.jpg",
+          narration: {
+            en: {
+              text:
+                "You are in Rumtek’s main prayer hall. Notice the golden Buddha statue, vibrant murals, and thangkas that narrate Buddhist teachings and lineage history.",
+            },
+            hi: {
+              text:
+                "आप रुमटेक के मुख्य प्रार्थना कक्ष में हैं। सुनहरे बुद्ध प्रतिमा, जीवंत भित्तिचित्र और थांका परंपरा और बौद्ध शिक्षाओं की कथा कहते हैं।",
+            },
+            ne: {
+              text:
+                "तपाईं रुमटेकको मुख्य प्रार्थना हलमा हुनुहुन्छ। सुनौलो बुद्ध मूर्ति, रङ्गीन भित्तेचित्र र थाङ्काहरूले बौद्ध शिक्षाहरूको कथा सुनाउँछन्।",
+            },
+            fr: { text: "Vous êtes dans la grande salle de prière de Rumtek. Remarquez la statue dorée du Bouddha et les fresques colorées racontant les enseignements bouddhistes." },
+            ja: { text: "ここはルムテック僧院の本堂です。金色の仏像と、教えを物語る色鮮やかな壁画に注目してください。" },
+            zh: { text: "您正置身于鲁姆泰寺的大殿。请留意金色佛像与色彩斑斓的壁画，它们讲述着佛教的教义与传承。" },
+          },
           hotspots: [
             { pitch: -10, yaw: 0, type: "info", text: "Golden Buddha statue - 16th century craftsmanship" },
             { pitch: 5, yaw: 90, type: "info", text: "Traditional Tibetan murals depicting Buddhist teachings" },
@@ -91,6 +120,14 @@ export const monasteries: Monastery[] = [
           id: "courtyard",
           title: "Main Courtyard",
           image: "/rumtek-monastery-courtyard-360-panoramic-view.jpg",
+          narration: {
+            en: { text: "This is the main courtyard where festivals and cham dances take place. Prayer wheels line the walls inviting blessings." },
+            hi: { text: "यह मुख्य आँगन है जहाँ त्योहार और छम नृत्य होते हैं। दीवारों के साथ प्रार्थना चक्के आशीर्वाद के लिए आमंत्रित करते हैं।" },
+            ne: { text: "यो मुख्य आँगन हो जहाँ पर्व र छाम नृत्यहरू हुने गर्छन्। भित्ताहरूमा प्रार्थना चर्खाहरूले आशीर्वादको निम्ति बोलाउँछन्।" },
+            fr: { text: "Voici la cour principale où ont lieu les festivals et danses cham. Les moulins à prières longent les murs." },
+            ja: { text: "ここは祭りやチャム舞が行われる中庭です。祈祷輪が壁沿いに並んでいます。" },
+            zh: { text: "这是举行节庆与羌姆舞的主庭院。转经轮沿墙排列，祈愿祝福。" },
+          },
           hotspots: [
             { pitch: 0, yaw: 180, type: "info", text: "Prayer wheels - spin clockwise for blessings" },
             { pitch: 0, yaw: -10, type: "scene", text: "Enter Main Hall", sceneId: "main-hall" },
@@ -195,6 +232,14 @@ export const monasteries: Monastery[] = [
           id: "main-shrine",
           title: "Main Shrine Room",
           image: "/pemayangtse-monastery-shrine-room-360-view.jpg",
+          narration: {
+            en: { text: "Pemayangtse’s shrine holds ancient images and sacred objects of the Nyingma tradition. Observe the serene arrangement and murals." },
+            hi: { text: "पेमायंग्त्से का मुख्य श्राइन न्यिंगमा परम्परा की प्राचीन मूर्तियाँ और पवित्र वस्तुओं को संजोए है।" },
+            ne: { text: "पेमायाङ्त्सेको मुख्य देवालयमा न्यिङ्मा परम्पराका प्राचीन मूर्तिहरू र पवित्र सामग्रीहरू छन्।" },
+            fr: { text: "Le sanctuaire de Pemayangtse conserve des images anciennes et des objets sacrés de la tradition Nyingma." },
+            ja: { text: "ペマヤンツェの本殿にはニンマ派の聖なる遺物や古像が安置されています。" },
+            zh: { text: "白玛央则寺的大殿供奉着宁玛派的古老造像与圣物。" },
+          },
           hotspots: [
             { pitch: 0, yaw: 150, type: "scene", text: "Go to Top Floor", sceneId: "top-floor" },
           ],
@@ -203,6 +248,14 @@ export const monasteries: Monastery[] = [
           id: "top-floor",
           title: "Top Floor - Zangdok Palri",
           image: "/pemayangtse-monastery-top-floor-wooden-model-360.jpg",
+          narration: {
+            en: { text: "The top floor features the exquisite wooden model of Zangdok Palri, symbolizing Guru Rinpoche’s pure land." },
+            hi: { text: "शीर्ष तल पर ज़ंगडोक पलरी का सुंदर काठका नमूना है, जो गुरु रिनपोछे की शुद्ध भूमि का प्रतीक है।" },
+            ne: { text: "माथिल्लो तलमा जंगडोक पल्रीको उत्कृष्ट काठको नमूना छ, गुरु रिनपोचेको शुद्ध भूमिको प्रतीक।" },
+            fr: { text: "L’étage supérieur abrite le modèle en bois de Zangdok Palri, la terre pure de Gourou Rinpoché." },
+            ja: { text: "最上階にはグル・リンポチェの浄土『ザンドク・パリ』の精巧な木製模型があります。" },
+            zh: { text: "顶层陈列着精美的木制“桑多白利”模型，象征莲师的净土。" },
+          },
           hotspots: [
             { pitch: 0, yaw: -30, type: "scene", text: "Back to Shrine Room", sceneId: "main-shrine" },
           ],
@@ -248,9 +301,36 @@ export const monasteries: Monastery[] = [
     significance: "The sacred Bumchu ceremony is held here annually, predicting the year ahead for Sikkim.",
     founded: "1717",
     architecture: "Perched on a hilltop with panoramic views of the Himalayas",
-    images: ["/tashiding-monastery-sikkim-sacred-site.jpg", "/tashiding-monastery-hilltop-view-prayer-flags.jpg", "/tashiding-monastery-bumchu-ceremony.jpg"],
+    images: [
+      "/tashiding-monastery-sikkim-sacred-site.jpg",
+      "/tashiding-monastery-hilltop-view-prayer-flags.jpg",
+      "/tashiding-monastery-bumchu-ceremony.jpg",
+    ],
     virtualTour: {
-      available: false,
+      available: true,
+      scenes: [
+        {
+          id: "interior",
+          title: "Main Shrine Interior",
+          image: "/virtual-tour-interior.jpg",
+          narration: {
+            en: { text: "Inside Tashiding’s shrine, murals and sacred objects illustrate teachings and the monastery’s revered spiritual heritage." },
+            hi: { text: "ताशी딩 के गर्भगृह में भित्ति-चित्र और पवित्र वस्तुएँ इसकी आध्यात्मिक परम्परा और शिक्षाओं को दर्शाती हैं।" },
+            ne: { text: "ताशी्डिङको गर्भगृहभित्र भित्तेचित्र र पवित्र सामग्रीहरूले यसको आध्यात्मिक परम्परा र शिक्षाहरू झल्काउँछन्।" },
+            fr: { text: "Au sanctuaire de Tashiding, fresques et objets sacrés illustrent l’héritage spirituel du monastère." },
+            ja: { text: "タシディンの内陣では、壁画や聖なる法具が教えと霊的遺産を物語ります。" },
+            zh: { text: "在塔希丁寺的殿内，壁画与圣物展示了其珍贵的精神传承与教义。" },
+          },
+          hotspots: [
+            {
+              pitch: 0,
+              yaw: 0,
+              type: "info",
+              text: "Altar and sacred artifacts of Tashiding",
+            },
+          ],
+        },
+      ],
     },
     audioGuide: {
       available: true,
@@ -278,7 +358,7 @@ export const monasteries: Monastery[] = [
     rating: 4.6,
     reviews: 654,
     category: "Sacred Site",
-    tags: ["Sacred", "Pilgrimage", "Ceremonies", "Hiking"],
+    tags: ["Sacred", "Pilgrimage", "Ceremonies", "Hiking", "Virtual Tour"],
   },
 ]
 

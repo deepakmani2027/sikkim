@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Play,
   Pause,
@@ -39,6 +40,13 @@ interface VirtualTourProps {
       text: string
       sceneId?: string
     }>
+    narration?: {
+      // BCP-47 language code (e.g., 'en', 'hi', 'ne', 'bo', 'fr', 'ja', 'zh-CN')
+      [langCode: string]: {
+        text?: string
+        audioUrl?: string
+      }
+    }
   }>
 }
 
@@ -56,6 +64,10 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
   const [gyroOn, setGyroOn] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [resolvedImage, setResolvedImage] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [narrationPlaying, setNarrationPlaying] = useState(false)
+  const [selectedLang, setSelectedLang] = useState<string>("en")
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([])
 
   const currentSceneData = scenes[currentScene]
   const pannellumKey = useMemo(() => currentSceneData?.id ?? `scene-${currentScene}`, [currentSceneData?.id, currentScene])
@@ -116,6 +128,7 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
   const handleSceneChange = (sceneIndex: number) => {
     setCurrentScene(sceneIndex)
     setTourProgress(0)
+    stopNarration()
   }
 
   const togglePlay = () => {
@@ -126,6 +139,7 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
     setCurrentScene(0)
     setTourProgress(0)
     setIsPlaying(false)
+    stopNarration()
   }
 
   const nextScene = () => {
@@ -178,6 +192,85 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
     if (idx >= 0) handleSceneChange(idx)
   }
 
+  // ----- Narration helpers (audioUrl or TTS fallback) -----
+  const currentNarration = currentSceneData?.narration || {}
+  const narrationForLang = useMemo(() => {
+    // Try selected language, then generic base language, then English fallback
+    if (!currentNarration) return undefined
+    const exact = currentNarration[selectedLang]
+    if (exact) return exact
+    // If selectedLang like zh-CN, try zh
+    const base = selectedLang.split("-")[0]
+    if (currentNarration[base]) return currentNarration[base]
+    return currentNarration["en"]
+  }, [currentNarration, selectedLang])
+
+  const preferredLangCode = useMemo(() => {
+    if (!narrationForLang) return "en"
+    // Use the selected language base code for TTS
+    const code = selectedLang.includes("-") ? selectedLang : selectedLang
+    return code
+  }, [narrationForLang, selectedLang])
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+    let mounted = true
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices()
+      if (mounted) setAvailableVoices(voices)
+    }
+    loadVoices()
+    window.speechSynthesis.onvoiceschanged = loadVoices
+    return () => {
+      mounted = false
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null
+    }
+  }, [])
+
+  const stopNarration = () => {
+    try {
+      audioRef.current?.pause()
+      if (audioRef.current) audioRef.current.currentTime = 0
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel()
+      }
+    } catch {}
+    setNarrationPlaying(false)
+  }
+
+  const playNarration = () => {
+    if (!narrationForLang) return
+    // Prefer audioUrl if provided
+    if (narrationForLang.audioUrl) {
+      if (!audioRef.current) return
+      audioRef.current.src = narrationForLang.audioUrl
+      audioRef.current.muted = isMuted
+      audioRef.current.play().then(() => setNarrationPlaying(true)).catch(() => setNarrationPlaying(false))
+      return
+    }
+    // Fallback to client TTS if text exists
+    if (typeof window !== "undefined" && window.speechSynthesis && narrationForLang.text) {
+      try {
+        const utter = new SpeechSynthesisUtterance(narrationForLang.text)
+        utter.lang = preferredLangCode
+        utter.rate = 1
+        utter.pitch = 1
+        utter.volume = isMuted ? 0 : 1
+        // Try to pick a matching voice
+        const base = preferredLangCode.split("-")[0]
+        const match = availableVoices.find((v) => v.lang.startsWith(preferredLangCode) || v.lang.startsWith(base))
+        if (match) utter.voice = match
+        utter.onend = () => setNarrationPlaying(false)
+        utter.onerror = () => setNarrationPlaying(false)
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(utter)
+        setNarrationPlaying(true)
+        return
+      } catch {}
+    }
+    setNarrationPlaying(false)
+  }
+
   const renderVideoScene = (url: string) => {
     const u = url.trim()
     const isYouTube = /youtube\.com\/watch\?v=|youtu\.be\//i.test(u)
@@ -226,9 +319,41 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
               </div>
               Virtual Tour: {currentSceneData?.title}
             </CardTitle>
-            <Badge variant="secondary">
-              Scene {currentScene + 1} of {scenes.length}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Narration</span>
+                <Select value={selectedLang} onValueChange={(v) => { setSelectedLang(v); stopNarration() }}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[
+                      { code: "en", label: "English" },
+                      { code: "hi", label: "Hindi" },
+                      { code: "ne", label: "Nepali" },
+                      { code: "bo", label: "Tibetan" },
+                      { code: "fr", label: "French" },
+                      { code: "ja", label: "Japanese" },
+                      { code: "zh-CN", label: "Chinese" },
+                    ].map((l) => (
+                      <SelectItem key={l.code} value={l.code}>
+                        {l.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (narrationPlaying ? stopNarration() : playNarration())}
+                >
+                  {narrationPlaying ? "Pause narration" : "Play narration"}
+                </Button>
+              </div>
+              <Badge variant="secondary">
+                Scene {currentScene + 1} of {scenes.length}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -323,6 +448,15 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Button
+                    aria-label={narrationPlaying ? "Pause narration" : "Play narration"}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => (narrationPlaying ? stopNarration() : playNarration())}
+                    className="text-white hover:bg-white/20"
+                  >
+                    {narrationPlaying ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
                   <Button aria-label="Zoom in" variant="ghost" size="sm" onClick={zoomIn} className="text-white hover:bg-white/20">
                     <ZoomIn className="h-4 w-4" />
                   </Button>
@@ -372,6 +506,8 @@ export function VirtualTour({ monasteryId, scenes }: VirtualTourProps) {
               </div>
             )}
           </div>
+          {/* Hidden audio element for audioUrl playback */}
+          <audio ref={audioRef} onEnded={() => setNarrationPlaying(false)} className="hidden" />
         </CardContent>
       </Card>
 
