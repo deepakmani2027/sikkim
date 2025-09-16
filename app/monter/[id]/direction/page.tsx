@@ -1,0 +1,1 @@
+export { default } from "@/app/monastery/[id]/directions/page"
