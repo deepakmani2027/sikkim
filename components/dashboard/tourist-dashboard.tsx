@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Camera, Star } from "lucide-react"
+import { MapPin, Calendar, Camera, Star, Car } from "lucide-react"
 import { FestivalCalendarButton } from "@/components/interactive/festival-calendar"
 import { monasteries } from "@/lib/monasteries"
 import Link from "next/link"
@@ -93,6 +93,12 @@ export function TouristDashboard() {
             <Link href="/planner">
               <MapPin className="mr-2 h-4 w-4" />
               Travel Planner
+            </Link>
+          </Button>
+          <Button asChild className="bg-amber-500 hover:bg-amber-600 text-white shadow">
+            <Link href="/service">
+              <Car className="mr-2 h-4 w-4" />
+              Services
             </Link>
           </Button>
           <FestivalCalendarButton />

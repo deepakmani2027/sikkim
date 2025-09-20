@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Navbar } from "@/components/layout/navbar"
 import { VirtualTour } from "@/components/interactive/virtual-tour"
+import { GoogleStreetViewDynamic } from "@/components/interactive/google-street-view-dynamic"
 import { getMonasteryById } from "@/lib/monasteries"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
@@ -49,7 +50,12 @@ export default function VirtualTourPage() {
           </Button>
         </div>
 
-        {/* Virtual Tour */}
+        {/* Google 360 Street View (if available at monastery location) */}
+        <div className="relative mb-6">
+          <GoogleStreetViewDynamic lat={monastery.coordinates.lat} lng={monastery.coordinates.lng} placeName={monastery.name} />
+        </div>
+
+        {/* Virtual Tour (site-curated panoramas) */}
         <VirtualTour monasteryId={monastery.id} scenes={monastery.virtualTour.scenes || []} />
       </main>
     </div>

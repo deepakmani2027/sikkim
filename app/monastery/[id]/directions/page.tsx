@@ -31,8 +31,8 @@ type Suggestion = {
 }
 
 const AIRPORTS = [
-  { name: "Pakyong Airport (PYG)", lat: 27.2233, lon: 88.5897 },
-  { name: "Bagdogra Airport (IXB)", lat: 26.6812, lon: 88.3286 },
+  { name: "Pakyong Airport", iata: "PYG", lat: 27.2233, lon: 88.5897 },
+  { name: "Bagdogra Airport", iata: "IXB", lat: 26.6812, lon: 88.3286 },
 ]
 
 function haversineDistanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
@@ -50,16 +50,24 @@ function haversineDistanceKm(a: { lat: number; lon: number }, b: { lat: number; 
 
 function formatDuration(seconds: number) {
   if (!isFinite(seconds) || seconds <= 0) return "—"
-  const h = Math.floor(seconds / 3600)
-  const m = Math.round((seconds % 3600) / 60)
-  if (h === 0) return `${m} min`
-  return `${h} hr ${m} min`
+  const totalMinutes = Math.round(seconds / 60)
+  const minutesPerDay = 24 * 60
+  const days = Math.floor(totalMinutes / minutesPerDay)
+  const remMinutesAfterDays = totalMinutes - days * minutesPerDay
+  const hours = Math.floor(remMinutesAfterDays / 60)
+  const minutes = remMinutesAfterDays % 60
+
+  if (days >= 1) {
+    return `${days} days ${hours} hr ${minutes} min`
+  }
+  if (hours === 0) return `${minutes} min`
+  return `${hours} hr ${minutes} min`
 }
 
 // Average speeds used for duration estimates
 const SPEEDS = {
   carKmh: 60,
-  trainKmh: 100,
+  trainKmh: 80,
   walkKmh: 3,
 }
 
@@ -95,12 +103,22 @@ export default function DirectionsPage() {
   const [loadingRoute, setLoadingRoute] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeMode, setActiveMode] = useState<"driving" | "walking">("driving")
+  const [nearestAirportDyn, setNearestAirportDyn] = useState<
+    | { name: string; iata?: string; lat: number; lon: number; d: number }
+    | null
+  >(null)
 
   // Directions are accessible without authentication
 
   useEffect(() => {
     const controller = new AbortController()
     async function search(q: string) {
+      const qn = (q || "").trim().toLowerCase()
+      // Do not show suggestions for the special placeholder 'My Location'
+      if (qn === "my location" || qn.startsWith("my location")) {
+        setSuggestions([])
+        return
+      }
       if (!q || q.length < 3) {
         setSuggestions([])
         return
@@ -170,6 +188,66 @@ export default function DirectionsPage() {
     fetchRoutes()
   }, [userLoc, monastery])
 
+  // Fetch nearest airport using Overpass (dynamic, with fallback)
+  useEffect(() => {
+    async function fetchNearestAirport() {
+      if (!monastery) return
+      try {
+        const lat = monastery.coordinates.lat
+        const lon = monastery.coordinates.lng
+        // 300km search radius
+        const radius = 300000
+        const overpass = `
+          [out:json][timeout:25];
+          (
+            node["aeroway"="aerodrome"](around:${radius},${lat},${lon});
+            way["aeroway"="aerodrome"](around:${radius},${lat},${lon});
+            relation["aeroway"="aerodrome"](around:${radius},${lat},${lon});
+          );
+          out center tags 100;
+        `
+        const resp = await fetch(
+          `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpass)}`,
+          { headers: { Accept: "application/json" } },
+        )
+        if (!resp.ok) throw new Error("overpass failed")
+        const data = await resp.json()
+        const elements: any[] = data?.elements || []
+        type AP = { name: string; iata?: string; lat: number; lon: number; d: number; type?: string }
+        const list: AP[] = elements
+          .map((el) => {
+            const tags = el.tags || {}
+            const n = tags.name || ""
+            const iata = tags.iata || undefined
+            const type = tags["aerodrome:type"] || tags["aerodrome" ] || undefined
+            const latEl = el.lat ?? el.center?.lat
+            const lonEl = el.lon ?? el.center?.lon
+            if (latEl == null || lonEl == null) return null
+            // Filter out heliports/helipads if possible
+            const bad = typeof type === "string" && /heli/.test(type)
+            if (!n || bad) return null
+            const d = haversineDistanceKm({ lat, lon }, { lat: latEl, lon: lonEl })
+            return { name: String(n), iata: iata ? String(iata) : undefined, lat: latEl, lon: lonEl, d, type }
+          })
+          .filter(Boolean) as AP[]
+
+        if (list.length === 0) return
+        // Prefer entries with IATA, then by distance
+        list.sort((a, b) => {
+          const ai = a.iata ? 0 : 1
+          const bi = b.iata ? 0 : 1
+          if (ai !== bi) return ai - bi
+          return a.d - b.d
+        })
+        setNearestAirportDyn(list[0])
+      } catch (e) {
+        // ignore; fallback will be used
+        setNearestAirportDyn(null)
+      }
+    }
+    fetchNearestAirport()
+  }, [monastery?.id])
+
   // No global loading screen needed; map and routes load progressively
 
   if (!monastery) return null
@@ -181,6 +259,13 @@ export default function DirectionsPage() {
   const distanceKm = userLoc
     ? haversineDistanceKm({ lat: userLoc.lat, lon: userLoc.lon }, { lat: monasteryPoint[0], lon: monasteryPoint[1] })
     : null
+
+  // Prefer route distance for summary when available
+  const summaryDistanceKm = routeDriving
+    ? routeDriving.distance / 1000
+    : routeWalking
+    ? routeWalking.distance / 1000
+    : distanceKm ?? null
 
   // Compute durations using fixed average speeds; when route distances are available, prefer them
   const drivingDuration = routeDriving
@@ -195,13 +280,15 @@ export default function DirectionsPage() {
     ? durationSecondsFromKm(distanceKm, SPEEDS.walkKmh)
     : NaN
 
-  const trainDuration = distanceKm ? durationSecondsFromKm(distanceKm, SPEEDS.trainKmh) : NaN
+  const trainDuration = summaryDistanceKm ? durationSecondsFromKm(summaryDistanceKm, SPEEDS.trainKmh) : NaN
 
-  const nearestAirport = AIRPORTS.map((a) => ({
+  const nearestAirportFallback = AIRPORTS.map((a) => ({
     ...a,
     d: haversineDistanceKm({ lat: monasteryPoint[0], lon: monasteryPoint[1] }, { lat: a.lat, lon: a.lon }),
   }))
     .sort((x, y) => x.d - y.d)[0]
+
+  const displayAirport = nearestAirportDyn ?? nearestAirportFallback
 
   const markerIcon = L.icon({
     iconUrl: "/marker-red-3d.svg",
@@ -357,17 +444,13 @@ export default function DirectionsPage() {
               <CardContent className="space-y-2">
                 <div className="text-sm text-muted-foreground">From: {userLoc?.label ?? "—"}</div>
                 <div className="text-sm text-muted-foreground">To: {monastery.name}</div>
-                <div className="text-lg font-semibold">{distanceKm ? distanceKm.toFixed(1) : "—"} km away</div>
+                <div className="text-lg font-semibold">{summaryDistanceKm ? summaryDistanceKm.toFixed(1) : "—"} km away</div>
                 {loadingRoute && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Fetching routes…
                   </div>
                 )}
-                <div className="flex flex-wrap items-center gap-2 pt-2">
-                  <Badge variant="outline">Car {SPEEDS.carKmh} km/h</Badge>
-                  <Badge variant="outline">Train {SPEEDS.trainKmh} km/h</Badge>
-                  <Badge variant="outline">Walk {SPEEDS.walkKmh} km/h</Badge>
-                </div>
+                {/* Removed speed badges per request */}
               </CardContent>
             </Card>
 
@@ -431,7 +514,7 @@ export default function DirectionsPage() {
                   <CardTitle className="flex items-center gap-2"><TrainFront className="h-5 w-5" /> By Train</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-muted-foreground text-sm">{distanceKm?.toFixed(1) ?? "—"} km (as-the-crow-flies)</div>
+                  <div className="text-muted-foreground text-sm">{summaryDistanceKm ? summaryDistanceKm.toFixed(1) : "—"} km</div>
                   <div className="text-lg font-semibold">{formatDuration(trainDuration)}</div>
                   <div className="text-xs text-muted-foreground mt-1">Estimated using average speed; actual routes may vary.</div>
                 </CardContent>
@@ -442,9 +525,11 @@ export default function DirectionsPage() {
                   <CardTitle className="flex items-center gap-2"><Info className="h-5 w-5" /> Nearest Airport</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-lg font-semibold">{nearestAirport?.name ?? "—"}</div>
-                  {nearestAirport && (
-                    <div className="text-sm text-muted-foreground">{nearestAirport.d.toFixed(1)} km from monastery</div>
+                  <div className="text-lg font-semibold">
+                    {displayAirport ? `${displayAirport.name}${displayAirport.iata ? ` (${displayAirport.iata})` : ""}` : "—"}
+                  </div>
+                  {displayAirport && (
+                    <div className="text-sm text-muted-foreground">{displayAirport.d.toFixed(1)} km from monastery</div>
                   )}
                 </CardContent>
               </Card>

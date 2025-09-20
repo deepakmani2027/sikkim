@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Navbar } from "@/components/layout/navbar"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { GooglePhotosGrid } from "@/components/interactive/google-photos-grid"
 import { getMonasteryById } from "@/lib/monasteries"
 import {
   MapPin,
@@ -22,7 +23,12 @@ import {
   Share2,
   Heart,
   Download,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import Link from "next/link"
 
 export default function MonasteryDetailPage() {
@@ -33,6 +39,49 @@ export default function MonasteryDetailPage() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("overview")
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
+  const [googleImages, setGoogleImages] = useState<string[]>([])
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+
+  useEffect(() => {
+    let active = true
+    async function loadGooglePhotos() {
+      try {
+        if (!monastery || !apiKey) return
+        const { name, coordinates } = monastery
+        const findRes = await fetch(
+          `/api/services/places?find=${encodeURIComponent(name)}&type=point_of_interest&near=${coordinates.lat},${coordinates.lng}&radius=1500`,
+        )
+        const found = await findRes.json()
+        const cand = found.results?.[0]
+        if (!cand?.id) return
+        const detRes = await fetch(`/api/services/places?placeId=${cand.id}`)
+        const det = await detRes.json()
+        const photos: Array<{ ref: string; width: number }> = det?.result?.photos || []
+        if (!active) return
+        const toUrl = (ref: string, w: number) =>
+          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${Math.min(1600, Math.max(800, w || 1200))}&photo_reference=${encodeURIComponent(
+            ref,
+          )}&key=${encodeURIComponent(apiKey)}`
+        const urls = photos.map((p) => toUrl(p.ref, p.width))
+        setGoogleImages(urls)
+      } catch {
+        if (active) setGoogleImages([])
+      }
+    }
+    loadGooglePhotos()
+    return () => {
+      active = false
+    }
+  }, [monastery?.id, apiKey])
+
+  const allImages = useMemo(() => {
+    const base = monastery?.images ?? []
+    return [...base, ...googleImages]
+  }, [monastery?.images, googleImages])
 
   const goToAudioGuide = () => {
     setActiveTab("audio")
@@ -165,29 +214,53 @@ In short, Rumtek Monastery is like a living museum of Buddhist art and sacred he
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Image Gallery */}
           <div className="space-y-4">
-            <div className="aspect-video rounded-lg overflow-hidden">
+            <div
+              className="aspect-video rounded-lg overflow-hidden cursor-zoom-in"
+              onClick={() => {
+                setLightboxIndex(selectedImage)
+                setLightboxOpen(true)
+              }}
+            >
               <img
-                src={monastery.images[selectedImage] || "/placeholder.svg"}
+                src={allImages[selectedImage] || "/placeholder.svg"}
                 alt={monastery.name}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {monastery.images.map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`aspect-video rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === index ? "border-primary" : "border-transparent"
-                  }`}
-                >
-                  <img
-                    src={image || "/placeholder.svg"}
-                    alt={`${monastery.name} ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+              {allImages.slice(0, 3).map((image, index) => {
+                const isLastPreview = index === 2 && allImages.length > 3
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      if (isLastPreview) {
+                        setLightboxIndex(selectedImage)
+                        setLightboxOpen(true)
+                      } else {
+                        setSelectedImage(index)
+                      }
+                    }}
+                    className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-colors ${
+                      selectedImage === index ? "border-primary" : "border-transparent"
+                    }`}
+                  >
+                    <img
+                      src={image || "/placeholder.svg"}
+                      alt={`${monastery.name} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {isLastPreview && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="flex items-center gap-1 text-white text-sm font-medium">
+                          <Plus className="h-5 w-5" />
+                          <span>View more</span>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -250,14 +323,29 @@ In short, Rumtek Monastery is like a living museum of Buddhist art and sacred he
         </div>
 
         {/* Detailed Information */}
-  <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
             <TabsTrigger value="visiting">Visiting Info</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="festivals">Festivals</TabsTrigger>
             <TabsTrigger value="audio">Audio Guide</TabsTrigger>
           </TabsList>
+          <TabsContent value="media" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Photos & Videos from Google</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <GooglePhotosGrid name={monastery.name} lat={monastery.coordinates.lat} lng={monastery.coordinates.lng} />
+                <div className="text-xs text-muted-foreground mt-2">
+                  Images may be subject to copyright. Sources: Google Maps contributors.
+                </div>
+                {/* Street View removed from Media per request */}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -404,6 +492,69 @@ In short, Rumtek Monastery is like a living museum of Buddhist art and sacred he
           </TabsContent>
         </Tabs>
       </main>
+      {/* Lightbox for images */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-none sm:max-w-none w-[94vw] mt-3 mb-3 p-0 overflow-hidden">
+          <div className="relative bg-black">
+            <div
+              className="relative w-full"
+              style={{ height: "90vh" }}
+              onTouchStart={(e) => setTouchStartX(e.changedTouches[0]?.clientX ?? null)}
+              onTouchEnd={(e) => {
+                if (touchStartX == null) return
+                const dx = (e.changedTouches[0]?.clientX ?? touchStartX) - touchStartX
+                const threshold = 40
+                if (dx > threshold) {
+                  setLightboxIndex((i) => (i - 1 + allImages.length) % allImages.length)
+                } else if (dx < -threshold) {
+                  setLightboxIndex((i) => (i + 1) % allImages.length)
+                }
+                setTouchStartX(null)
+              }}
+            >
+              <button
+                onClick={() => setLightboxOpen(false)}
+                className="absolute top-2 right-2 z-10 rounded-full bg-white/10 hover:bg-white/20 p-2 text-white"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setLightboxIndex((i) => (i - 1 + allImages.length) % allImages.length)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/10 hover:bg-white/20 p-2 text-white"
+                aria-label="Previous"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <img
+                src={allImages[lightboxIndex]}
+                alt={`${monastery.name} large`}
+                className="absolute inset-0 w-full h-full object-contain"
+              />
+              <button
+                onClick={() => setLightboxIndex((i) => (i + 1) % allImages.length)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/10 hover:bg-white/20 p-2 text-white"
+                aria-label="Next"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-background p-3 overflow-x-auto flex gap-2">
+            {allImages.map((img, idx) => (
+              <button
+                key={img + idx}
+                onClick={() => setLightboxIndex(idx)}
+                className={`h-16 w-24 rounded overflow-hidden border ${
+                  lightboxIndex === idx ? "border-primary" : "border-transparent"
+                }`}
+              >
+                <img src={img} alt={`${monastery.name} thumb ${idx + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

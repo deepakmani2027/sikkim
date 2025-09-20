@@ -279,7 +279,9 @@ export function RegionPlannerMap() {
         <CardTitle className="text-sm">Nearby to {selectedMonastery.name} (≤ {radiusKm}km)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 max-h-80 overflow-auto">
-              {(Object.keys(nearbyByCategory) as Category[]).map((c) => (
+              {(Object.keys(nearbyByCategory) as Category[])
+                .filter((c) => c !== "transport" && c !== "homestay")
+                .map((c) => (
                 enabled[c] && (
                   <div key={c}>
                     <div className="text-xs font-medium capitalize mb-1" style={{ color: categoryColors[c] }}>{c}</div>
