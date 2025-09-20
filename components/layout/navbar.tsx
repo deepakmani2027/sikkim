@@ -65,6 +65,11 @@ export function Navbar() {
             )}
 
               <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
+                <Link href="/digital-archives">
+                  <span className="hidden sm:inline">Digital Archives</span>
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
                 <Link href="/virtual-tours">
                   <span className="hidden sm:inline">Virtual Tours</span>
                 </Link>
@@ -106,6 +111,9 @@ export function Navbar() {
                 </Link>
               </Button>
             )}
+            <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
+              <Link href="/digital-archives">Digital Archives</Link>
+            </Button>
             <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
               <Link href="/virtual-tours">Virtual Tours</Link>
             </Button>
