@@ -283,12 +283,12 @@ export default function DigitalArchivesPage() {
         </header>
 
         <section
-          className="grid gap-6 md:gap-7 [grid-template-columns:repeat(auto-fit,minmax(460px,1fr))]"
+          className="grid gap-4 sm:gap-6 md:gap-7 grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(340px,1fr))] md:[grid-template-columns:repeat(auto-fit,minmax(460px,1fr))]"
           id="collection"
         >
           {items.map((it) => (
             <Card key={it.id} className="overflow-hidden border border-border/60 p-0">
-              <div className="relative h-60 sm:h-72 md:h-80">
+              <div className="relative h-56 sm:h-72 md:h-80">
                 <Image src={it.image} alt={it.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 33vw" />
 
                 {/* Type badge */}
@@ -308,8 +308,8 @@ export default function DigitalArchivesPage() {
 
               <CardContent className=" pb-4">
                 <h3 className="text-2xl sm:text-[28px] font-bold leading-tight">{it.title}</h3>
-                <p className="mt-1 text-base text-muted-foreground">{it.monastery}</p>
-                <p className="mt-3 text-base text-muted-foreground line-clamp-3">{it.description}</p>
+                <p className="mt-1 text-sm sm:text-base text-muted-foreground">{it.monastery}</p>
+                <p className="mt-3 text-sm sm:text-base text-muted-foreground line-clamp-3">{it.description}</p>
 
                 <div className="mt-4 space-y-1 text-sm">
                   <div className="flex items-center gap-2"><span className="font-semibold">Language:</span><span>{it.language}</span></div>
@@ -321,8 +321,8 @@ export default function DigitalArchivesPage() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-2">
-                  <Button className="grow" onClick={() => onPreview(it)}>Preview</Button>
-                  <Button variant="outline" size="icon" asChild>
+                  <Button className="grow py-6 text-base" onClick={() => onPreview(it)}>Preview</Button>
+                  <Button variant="outline" size="icon" className="h-12 w-12" asChild>
                     <a href={it.image} download>
                       <Download className="h-4 w-4" />
                     </a>
@@ -354,23 +354,23 @@ export default function DigitalArchivesPage() {
 
       {/* Preview Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-5xl md:max-w-6xl">
+        <DialogContent className="w-[96vw] sm:max-w-5xl md:max-w-6xl p-4 sm:p-6">
           {active && (
             <div>
               <DialogHeader>
-                <DialogTitle className="text-2xl sm:text-3xl font-bold">{active.title}</DialogTitle>
-                <DialogDescription className="text-base sm:text-lg text-muted-foreground">
+                <DialogTitle className="text-xl sm:text-3xl font-bold">{active.title}</DialogTitle>
+                <DialogDescription className="text-sm sm:text-lg text-muted-foreground">
                   {active.monastery} • {active.century}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="relative mt-4 h-80 sm:h-96 md:h-[30rem] rounded overflow-hidden">
+              <div className="relative mt-3 sm:mt-4 h-72 sm:h-96 md:h-[30rem] rounded overflow-hidden">
                 <Image src={active.image} alt={active.title} fill className="object-cover" />
               </div>
 
-              <p className="mt-4 text-base sm:text-lg text-muted-foreground">{active.description}</p>
+              <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-muted-foreground">{active.description}</p>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 text-base">
+              <div className="mt-5 sm:mt-6 grid gap-3 sm:gap-4 sm:grid-cols-2 text-sm sm:text-base">
                 <div className="flex items-center justify-between border-t pt-3">
                   <span className="font-medium">Language:</span>
                   <span>{active.language}</span>
@@ -389,16 +389,16 @@ export default function DigitalArchivesPage() {
                 </div>
                 <div className="flex items-center justify-between border-t pt-3 sm:col-span-2">
                   <span className="font-medium">Conservation Status:</span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-sm ${statusClass(active.status)}`}>{active.status}</span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs sm:text-sm ${statusClass(active.status)}`}>{active.status}</span>
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <Button className="grow" onClick={() => downloadArchiveAsPDF(active)}>
-                  <Download className="mr-2 h-4 w-4" /> Download High Resolution
+              <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row gap-3">
+                <Button className="grow h-14 text-base sm:text-lg" onClick={() => downloadArchiveAsPDF(active)}>
+                  <Download className="mr-2 h-5 w-5" /> Download High Resolution
                 </Button>
-                <Button variant="outline" onClick={() => onShare(active)} className="grow">
-                  <Share2 className="mr-2 h-4 w-4" /> Share Archive
+                <Button variant="outline" onClick={() => onShare(active)} className="grow h-14 text-base sm:text-lg">
+                  <Share2 className="mr-2 h-5 w-5" /> Share Archive
                 </Button>
               </div>
             </div>
