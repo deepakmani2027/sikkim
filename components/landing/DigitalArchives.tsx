@@ -1,11 +1,14 @@
 "use client"
 import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type React from "react"
 import { motion } from "framer-motion"
 import { Search, Download, Eye, Calendar, FileText, Image, Scroll, Filter } from "lucide-react"
 import { HeroButton } from "@/components/ui/hero-button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/hooks/use-auth"
 const manuscriptImage = "/digital-archive-manuscript.jpg"
 const manuscriptDetail = "/manuscript-detail.jpg"
 const sacredMural = "/sacred-mural.jpg"
@@ -249,6 +252,8 @@ const DigitalArchives = () => {
   const [filterType, setFilterType] = useState<string>("all")
   const [filterMonastery, setFilterMonastery] = useState<string>("all")
   const [selectedItem, setSelectedItem] = useState<ArchiveItem | null>(null)
+  const { isAuthenticated, loading } = useAuth()
+  const router = useRouter()
 
   const filteredItems = archiveItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -373,7 +378,7 @@ const DigitalArchives = () => {
           </p>
         </motion.div>
 
-        {/* Archive Grid */}
+        {/* Archive Grid (limit to 3 on homepage) */}
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
           initial={{ opacity: 0, y: 20 }}
@@ -381,99 +386,123 @@ const DigitalArchives = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           viewport={{ once: true }}
         >
-          {filteredItems.map((item, index) => {
+          {filteredItems.slice(0, 3).map((item, index) => {
             const IconComponent = typeIcons[item.type]
             return (
               <motion.article
                 key={item.id}
-                className="group card-gradient rounded-2xl shadow-soft hover:shadow-elevated transition-all duration-500 overflow-hidden"
+                className="group relative card-gradient rounded-2xl shadow-soft hover:shadow-elevated transition-all duration-500 overflow-hidden"
                 whileHover={{ y: -8 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={item.image}
-                    alt={`${item.title} - ${item.type} from ${item.monastery}`}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                  
-                  {/* Type Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-full px-3 py-1">
-                    <IconComponent className="w-3 h-3 text-primary" />
-                    <span className="text-xs font-medium text-foreground capitalize">
-                      {item.type}
-                    </span>
-                  </div>
-
-                  {/* Century Badge */}
-                  <div className="absolute top-3 right-3 bg-secondary/90 backdrop-blur-sm rounded-full px-3 py-1">
-                    <span className="text-xs font-medium text-secondary-foreground">
-                      {item.century}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6">
-                  <h3 className="font-display text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
-                    {item.title}
-                  </h3>
-
-                  <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">{item.monastery}</span>
-                  </div>
-
-                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                    {item.description}
-                  </p>
-
-                  {/* Metadata Preview */}
-                  <div className="space-y-2 mb-6">
-                    <div className="text-xs text-muted-foreground">
-                      <strong>Language:</strong> {item.metadata.language}
+                {/* Full-card content (blurred on 3rd card) */}
+                <div className={`${index === 2 ? 'pointer-events-none filter blur-sm' : ''}`}>
+                  {/* Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={item.image}
+                      alt={`${item.title} - ${item.type} from ${item.monastery}`}
+                      className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    
+                    {/* Type Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-full px-3 py-1">
+                      <IconComponent className="w-3 h-3 text-primary" />
+                      <span className="text-xs font-medium text-foreground capitalize">
+                        {item.type}
+                      </span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      <strong>Material:</strong> {item.metadata.material}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <strong>Status:</strong> 
-                      <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
-                        item.metadata.conservationStatus === 'Excellent' ? 'bg-green-100 text-green-700' :
-                        item.metadata.conservationStatus === 'Good' ? 'bg-blue-100 text-blue-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {item.metadata.conservationStatus}
+
+                    {/* Century Badge */}
+                    <div className="absolute top-3 right-3 bg-secondary/90 backdrop-blur-sm rounded-full px-3 py-1">
+                      <span className="text-xs font-medium text-secondary-foreground">
+                        {item.century}
                       </span>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <HeroButton
-                      variant="primary"
-                      size="default"
-                      onClick={() => handlePreview(item)}
-                      className="flex-1 text-sm"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Preview
-                    </HeroButton>
-                    <HeroButton
-                      variant="hero-outline"
-                      size="default"
-                      onClick={() => handleDownload(item)}
-                      className="px-3"
-                    >
-                      <Download className="w-4 h-4" />
-                    </HeroButton>
+                  {/* Content */}
+                  <div className="p-6">
+                    <h3 className="font-display text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
+                      {item.title}
+                    </h3>
+
+                    <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-sm">{item.monastery}</span>
+                    </div>
+
+                    <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                      {item.description}
+                    </p>
+
+                    {/* Metadata Preview */}
+                    <div className="space-y-2 mb-6">
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Language:</strong> {item.metadata.language}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Material:</strong> {item.metadata.material}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Status:</strong> 
+                        <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                          item.metadata.conservationStatus === 'Excellent' ? 'bg-green-100 text-green-700' :
+                          item.metadata.conservationStatus === 'Good' ? 'bg-blue-100 text-blue-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {item.metadata.conservationStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <HeroButton
+                        variant="primary"
+                        size="default"
+                        onClick={() => handlePreview(item)}
+                        className="flex-1 text-sm"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Preview
+                      </HeroButton>
+                      <HeroButton
+                        variant="hero-outline"
+                        size="default"
+                        onClick={() => handleDownload(item)}
+                        className="px-3"
+                      >
+                        <Download className="w-4 h-4" />
+                      </HeroButton>
+                    </div>
                   </div>
                 </div>
+
+                {/* View more overlay on the 3rd card */}
+                {index === 2 && (
+                  <a
+                    href="/digital-archives"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (loading) return // avoid flicker; user can click again
+                      if (isAuthenticated) {
+                        router.push("/digital-archives")
+                      } else {
+                        router.push("/auth?returnTo=/digital-archives")
+                      }
+                    }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <span className="px-6 py-3 rounded-xl bg-black/60 text-white text-2xl font-semibold tracking-wide backdrop-blur hover:bg-black/70 transition-colors">
+                      View more
+                    </span>
+                  </a>
+                )}
               </motion.article>
             )
           })}

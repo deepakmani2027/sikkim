@@ -154,8 +154,8 @@ export default function ExplorePage() {
             {filteredMonasteries.map((monastery) => (
               <Card key={monastery.id} className="overflow-hidden pt-0 pb-0">
                 <CardContent className="p-0">
-                  <div className="flex items-stretch min-h-[8.5rem] md:min-h-[9.5rem]">
-                    <div className="w-44 md:w-52 lg:w-56 flex-shrink-0 overflow-hidden rounded-l-xl">
+                  <div className="flex items-stretch min-h-[10rem] md:min-h-[11rem] lg:min-h-[12rem]">
+                    <div className="w-44 md:w-52 lg:w-56 h-40 md:h-44 lg:h-48 flex-shrink-0 overflow-hidden rounded-l-xl">
                       <img
                         src={monastery.images[0] || "/placeholder.svg"}
                         alt={monastery.name}
@@ -177,14 +177,24 @@ export default function ExplorePage() {
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-1">{monastery.description}</p>
                       <div className="mt-auto flex items-center justify-between pt-1">
                         <div className="flex gap-2">
-                          {monastery.virtualTour?.available && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">360° Tour</span>
-                          )}
-                          {monastery.audioGuide?.available && (
-                            <span className="text-xs bg-secondary/10 text-secondary px-2 py-1 rounded">
-                              Audio Guide
-                            </span>
-                          )}
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              monastery.virtualTour?.available
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            360° Tour
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              monastery.audioGuide?.available
+                                ? "bg-secondary/10 text-secondary"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            Audio Guide
+                          </span>
                         </div>
                         <Button asChild size="sm">
                           <Link href={`/monastery/${monastery.id}`}>Explore</Link>

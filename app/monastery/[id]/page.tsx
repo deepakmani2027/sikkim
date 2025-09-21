@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, usePathname, notFound } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Navbar } from "@/components/layout/navbar"
 import { AudioGuide } from "@/components/interactive/audio-guide"
@@ -35,6 +35,7 @@ export default function MonasteryDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { isAuthenticated, loading } = useAuth()
+  const pathname = usePathname()
   const [monastery, setMonastery] = useState(getMonasteryById(params.id as string))
   const [selectedImage, setSelectedImage] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -107,9 +108,10 @@ export default function MonasteryDetailPage() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/auth")
+      const ret = pathname || "/monastery/" + String(params.id || "")
+      router.push(`/auth?returnTo=${encodeURIComponent(ret)}`)
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, loading, router, pathname, params.id])
 
   if (loading) {
     return (
@@ -122,9 +124,8 @@ export default function MonasteryDetailPage() {
     )
   }
 
-  if (!isAuthenticated || !monastery) {
-    return null
-  }
+  if (!isAuthenticated) return null
+  if (!monastery) return notFound()
 
   // Sample audio guide chapters
   const audioChapters = [
@@ -298,27 +299,34 @@ In short, Rumtek Monastery is like a living museum of Buddhist art and sacred he
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
-              {monastery.virtualTour?.available && (
-                <Button asChild className="h-12">
+              {monastery.virtualTour?.available ? (
+                <Button asChild className="h-12 w-full">
                   <Link href={`/monastery/${monastery.id}/tour`}>
                     <Camera className="mr-2 h-4 w-4" />
                     Virtual Tour
                   </Link>
                 </Button>
+              ) : (
+                <Button className="h-12 w-full pointer-events-none opacity-60">
+                  <Camera className="mr-2 h-4 w-4" />
+                  Virtual Tour
+                </Button>
               )}
+
               {monastery.audioGuide?.available && (
-                <Button variant="outline" className="h-12 bg-transparent" onClick={goToAudioGuide}>
+                <Button variant="outline" className="h-12 w-full bg-transparent" onClick={goToAudioGuide}>
                   <Headphones className="mr-2 h-4 w-4" />
                   Audio Guide
                 </Button>
               )}
-              <Button asChild variant="outline" className="h-12 bg-transparent">
+
+              <Button asChild variant="outline" className="h-12 w-full bg-transparent">
                 <Link href={`/monter/${monastery.id}/direction`}>
                   <MapPin className="mr-2 h-4 w-4" />
                   Get Directions
                 </Link>
               </Button>
-              <Button variant="outline" className="h-12 bg-transparent">
+              <Button variant="outline" className="h-12 w-full bg-transparent">
                 <Download className="mr-2 h-4 w-4" />
                 Download Info
               </Button>

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, usePathname } from "next/navigation"
+import { notFound } from "next/navigation"
 import { Navbar } from "@/components/layout/navbar"
 import { getMonasteryById } from "@/lib/monasteries"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,7 @@ import {
   Info,
   Loader2,
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 type Suggestion = {
   display_name: string
@@ -93,6 +95,8 @@ function BoundsUpdater({ points }: { points: [number, number][] }) {
 export default function DirectionsPage() {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
+  const { isAuthenticated, loading } = useAuth()
   const monastery = useMemo(() => getMonasteryById(params.id as string), [params.id])
 
   const [query, setQuery] = useState("")
@@ -108,7 +112,15 @@ export default function DirectionsPage() {
     | null
   >(null)
 
-  // Directions are accessible without authentication
+  // Require authentication; if not, redirect to login preserving return path
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      const ret = pathname || "/monastery/" + String(params.id || "") + "/directions"
+      router.push(`/auth?returnTo=${encodeURIComponent(ret)}`)
+    }
+  }, [isAuthenticated, loading, router, pathname, params.id])
+
+  if (!monastery) return notFound()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -250,7 +262,19 @@ export default function DirectionsPage() {
 
   // No global loading screen needed; map and routes load progressively
 
-  if (!monastery) return null
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading directions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!monastery) return notFound()
+  if (!isAuthenticated) return null
 
   const monasteryPoint: [number, number] = [monastery.coordinates.lat, monastery.coordinates.lng]
   const userPoint: [number, number] | null = userLoc ? [userLoc.lat, userLoc.lon] : null

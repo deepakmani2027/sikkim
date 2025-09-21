@@ -1,3 +1,4 @@
+import { toSlugId } from "./utils/slug"
 export interface Monastery {
   id: string
   name: string
@@ -360,10 +361,128 @@ export const monasteries: Monastery[] = [
     category: "Sacred Site",
     tags: ["Sacred", "Pilgrimage", "Ceremonies", "Hiking", "Virtual Tour"],
   },
+  {
+    id: "enchey",
+    name: "Enchey Monastery",
+    location: "Gangtok",
+    district: "East Sikkim",
+    coordinates: { lat: 27.3333, lng: 88.6167 },
+    description:
+      "The solitary monastery above Gangtok, built in 1909 and offering panoramic views of the capital. Known for its spectacular Chaam dance performances.",
+    history:
+      "Traditionally believed to be blessed by Lama Drupthob Karpo, Enchey was rebuilt in 1909 under the rule of Sidkeong Tulku Namgyal.",
+    significance:
+      "Important center of the Nyingma order with strong cultural presence in Gangtok; famous for its annual Chaam (mask) dances.",
+    founded: "1909",
+    architecture: "Traditional Sikkimese-Tibetan style with vibrant murals and ornate woodwork.",
+    images: [
+      "/enchey-2.jpg",
+      "/monastery-interior-1.jpg",
+      "/monastery-exterior-mountain.jpg",
+    ],
+  virtualTour: { available: false },
+  audioGuide: { available: true, languages: ["English", "Hindi"], duration: "10 minutes" },
+    visitingInfo: {
+      openingHours: "5:30 AM - 6:30 PM",
+      entryFee: "Free",
+      bestTimeToVisit: "October to May",
+      accessibility: "Road access; some stairs inside",
+    },
+    festivals: [
+      { name: "Chaam Dance Festival", date: "December–January", description: "Spectacular masked dances performed by monks." },
+      { name: "Losar", date: "February–March", description: "Tibetan New Year celebrations." },
+      { name: "Buddha Jayanti", date: "May", description: "Commemoration of Buddha's birth, enlightenment, and passing." },
+      { name: "Drupka Teshi", date: "July–August", description: "Marks Buddha's first teaching at Sarnath." },
+    ],
+    rating: 4.5,
+    reviews: 540,
+    category: "Historic Monastery",
+    tags: ["Nyingma", "Gangtok", "Festivals"],
+  },
+  {
+    id: "dubdi",
+    name: "Dubdi Monastery",
+    location: "Yuksom",
+    district: "West Sikkim",
+    coordinates: { lat: 27.35, lng: 88.2333 },
+    description:
+      "The first monastery built in Sikkim in 1701, also known as Hermit's Cell. Holds special significance as the birthplace of Buddhism in Sikkim.",
+    history:
+      "Established soon after the consecration of the first Chogyal (king) of Sikkim at Yuksom by Lhatsun Namkha Jigme.",
+    significance:
+      "Considered the oldest monastery of Sikkim and a key pilgrimage site connected with the founding of the kingdom.",
+    founded: "1701",
+    architecture: "Stone masonry with traditional woodwork, serene forested setting.",
+    images: [
+      "/monastery-exterior-mountain.jpg",
+      "/mountain-with-cliff.jpg",
+    ],
+  virtualTour: { available: false },
+  audioGuide: { available: true, languages: ["English", "Hindi"], duration: "8 minutes" },
+    visitingInfo: {
+      openingHours: "6:00 AM - 6:00 PM",
+      entryFee: "Free",
+      bestTimeToVisit: "October to May",
+      accessibility: "Short hike from Yuksom; uneven paths",
+    },
+    festivals: [
+      { name: "Bumchu Festival", date: "February–March", description: "Holy water ritual indicating fortunes for the coming year." },
+      { name: "Losar", date: "February–March", description: "Tibetan New Year celebrations." },
+      { name: "Guru Rinpoche Birthday", date: "June", description: "Ceremonies honoring Padmasambhava." },
+      { name: "Sacred Dance Festival", date: "Seasonal", description: "Masked dances by monks." },
+    ],
+    rating: 4.6,
+    reviews: 320,
+    category: "Historic Monastery",
+    tags: ["Oldest", "Yuksom", "Pilgrimage"],
+  },
+  {
+    id: "sangachoeling",
+    name: "Sangachoeling Monastery",
+    location: "Pelling",
+    district: "West Sikkim",
+    coordinates: { lat: 27.3083, lng: 88.2167 },
+    description:
+      "The second oldest monastery in Sikkim, perched at 2,100 meters offering breathtaking views of Kanchenjunga. Known for its ancient Buddhist sculptures.",
+    history:
+      "Founded by Lama Lhatsun Chempo in the 17th century; an important Nyingma monastery overlooking Pelling.",
+    significance:
+      "Houses ancient clay statues and holds significant religious importance for locals and pilgrims.",
+    founded: "17th century",
+    architecture: "Traditional hilltop monastery accessed by a forested trail.",
+    images: [
+      "/monastery-interior-1.jpg",
+      "/monastery-exterior-mountain.jpg",
+    ],
+  virtualTour: { available: false },
+  audioGuide: { available: true, languages: ["English", "Hindi"], duration: "9 minutes" },
+    visitingInfo: {
+      openingHours: "6:00 AM - 5:30 PM",
+      entryFee: "Free",
+      bestTimeToVisit: "October to April",
+      accessibility: "Steep walking trail from Pelling",
+    },
+    festivals: [
+      { name: "Losar", date: "February–March", description: "Tibetan New Year celebrations." },
+      { name: "Saga Dawa", date: "May–June", description: "Honors Buddha's birth, enlightenment, and parinirvana." },
+      { name: "Drukpa Kunley", date: "Seasonal", description: "Local festival and prayers." },
+      { name: "Mahakala Festival", date: "Seasonal", description: "Protector deity ceremonies." },
+    ],
+    rating: 4.5,
+    reviews: 410,
+    category: "Historic Monastery",
+    tags: ["Nyingma", "Pelling", "Views"],
+  },
 ]
 
 export function getMonasteryById(id: string): Monastery | undefined {
   return monasteries.find((monastery) => monastery.id === id)
+}
+
+export function getMonasteryIdByName(name: string): string | undefined {
+  const slug = toSlugId(name)
+  const found = monasteries.find((m) => m.id === slug || toSlugId(m.name) === slug || m.name.toLowerCase() === name.toLowerCase())
+  return found?.id
 }
 
 export function getMonasteriesByDistrict(district: string): Monastery[] {

@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { MapPin, Navigation, Info, Clock, Phone } from "lucide-react"
 import { HeroButton } from "@/components/ui/hero-button"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
+import { toSlugId } from "@/lib/utils/slug"
+import { getMonasteryIdByName, getMonasteryById } from "@/lib/monasteries"
 import dynamic from "next/dynamic"
 
 const LeafletMonasteryMap = dynamic(() => import("@/components/landing/LeafletMonasteryMap"), { ssr: false })
@@ -141,12 +145,20 @@ const InteractiveMap = () => {
   const [selectedMonastery, setSelectedMonastery] = useState<Monastery | null>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+  const router = useRouter()
+  const { isAuthenticated, loading } = useAuth()
+
+  const visibleMonasteries = useMemo(
+    () => monasteries.filter(m => m.name !== "Ralang Monastery" && m.name !== "Phensang Monastery"),
+    []
+  )
 
   const mapCenter = useMemo(() => {
-    const lat = monasteries.reduce((sum, m) => sum + m.lat, 0) / monasteries.length
-    const lng = monasteries.reduce((sum, m) => sum + m.lng, 0) / monasteries.length
+    const source = visibleMonasteries.length ? visibleMonasteries : monasteries
+    const lat = source.reduce((sum, m) => sum + m.lat, 0) / source.length
+    const lng = source.reduce((sum, m) => sum + m.lng, 0) / source.length
     return [lat, lng] as [number, number]
-  }, [])
+  }, [visibleMonasteries])
 
   const handleMarkerClick = (monastery: Monastery) => {
     setSelectedMonastery(monastery)
@@ -195,7 +207,7 @@ const InteractiveMap = () => {
               {/* Leaflet Map (client-only) */}
               <div className="w-full h-[480px] relative">
                 {mounted ? (
-                  <LeafletMonasteryMap monasteries={monasteries} center={mapCenter} onSelect={handleMarkerClick} />
+                  <LeafletMonasteryMap monasteries={visibleMonasteries} center={mapCenter} onSelect={handleMarkerClick} />
                 ) : null}
                 <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-3">
                   <div className="text-xs text-foreground font-medium mb-2">Legend</div>
@@ -291,13 +303,49 @@ const InteractiveMap = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <HeroButton variant="monastery" size="default" className="flex-1 text-sm">
+                    <HeroButton
+                      variant="monastery"
+                      size="default"
+                      className="flex-1 text-sm"
+                      onClick={() => {
+                        if (!selectedMonastery) return
+                        const byId = getMonasteryIdByName(selectedMonastery.name)
+                        if (!byId) {
+                          router.push("/404")
+                          return
+                        }
+                        const href = `/monter/${byId}/direction`
+                        if (loading) return
+                        if (isAuthenticated) router.push(href)
+                        else router.push(`/auth?returnTo=${encodeURIComponent(href)}`)
+                      }}
+                    >
                       <Navigation className="w-4 h-4 mr-1" />
                       Get Directions
                     </HeroButton>
-                    <HeroButton variant="primary" size="default" className="flex-1 text-sm">
-                      Virtual Tour
-                    </HeroButton>
+                    {(() => {
+                      if (!selectedMonastery) return null
+                      const byId = getMonasteryIdByName(selectedMonastery.name)
+                      if (!byId) return null
+                      const hasVirtual = !!getMonasteryById(byId)?.virtualTour?.available
+                      if (!hasVirtual) return null
+                      return (
+                        <HeroButton
+                          variant="primary"
+                          size="default"
+                          className="flex-1 text-sm"
+                          onClick={() => {
+                            if (!selectedMonastery) return
+                            const href = `/monastery/${byId}/tour`
+                            if (loading) return
+                            if (isAuthenticated) router.push(href)
+                            else router.push(`/auth?returnTo=${encodeURIComponent(href)}`)
+                          }}
+                        >
+                          Virtual Tour
+                        </HeroButton>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>

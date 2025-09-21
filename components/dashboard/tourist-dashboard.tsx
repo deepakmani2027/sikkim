@@ -9,41 +9,42 @@ import { monasteries } from "@/lib/monasteries"
 import Link from "next/link"
 
 export function TouristDashboard() {
-  const featuredMonasteries = [
-    {
-      id: 1,
-      slug: "rumtek",
-      name: "Rumtek Monastery",
-      location: "Gangtok",
-      description: "The largest monastery in Sikkim, known for its golden stupa and traditional architecture.",
-      image: "/rumtek-monastery-sikkim-buddhist-temple.jpg",
-      rating: 4.8,
-      hasVirtualTour: true,
-      hasAudioGuide: true,
-    },
-    {
-      id: 2,
-      slug: "pemayangtse",
-      name: "Pemayangtse Monastery",
-      location: "Pelling",
-      description: "One of the oldest monasteries in Sikkim, offering stunning views of Kanchenjunga.",
-      image: "/pemayangtse-monastery-sikkim-mountain-view.jpg",
-      rating: 4.7,
-      hasVirtualTour: true,
-      hasAudioGuide: true,
-    },
-    {
-      id: 3,
-      slug: "tashiding",
-      name: "Tashiding Monastery",
-      location: "West Sikkim",
-      description: "Sacred monastery believed to cleanse sins of those who visit with pure heart.",
-      image: "/tashiding-monastery-sikkim-sacred-site.jpg",
-      rating: 4.6,
-      hasVirtualTour: false,
-      hasAudioGuide: true,
-    },
-  ]
+  const featuredIds = [
+    "rumtek",
+    "pemayangtse",
+    "tashiding",
+    "enchey",
+    "dubdi",
+    "sangachoeling",
+  ] as const
+
+  const featuredMonasteries = featuredIds
+    .map((id, idx) => {
+      const m = monasteries.find((x) => x.id === id)
+      if (!m) return null
+      return {
+        id: idx + 1,
+        slug: m.id,
+        name: m.name,
+        location: m.location,
+        description: m.description,
+        image: m.images?.[0] || "/placeholder.svg",
+        rating: m.rating,
+        hasVirtualTour: !!m.virtualTour?.available,
+        hasAudioGuide: !!m.audioGuide?.available,
+      }
+    })
+    .filter(Boolean) as Array<{
+      id: number
+      slug: string
+      name: string
+      location: string
+      description: string
+      image: string
+      rating: number
+      hasVirtualTour: boolean
+      hasAudioGuide: boolean
+    }>
 
   const upcomingEvents = [
     {
@@ -143,11 +144,12 @@ export function TouristDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredMonasteries.map((monastery) => (
             <Card key={monastery.id} className="overflow-hidden pt-0">
-              <div className="relative" style={{ aspectRatio: "16 / 8" }}>
+              <div className="relative w-full h-60 md:h-72 lg:h-80 overflow-hidden">
                 <img
                   src={monastery.image || "/placeholder.svg"}
                   alt={monastery.name}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                  loading="lazy"
                 />
                 <div className="absolute top-2 right-2 flex gap-1">
                   {monastery.hasVirtualTour && (
