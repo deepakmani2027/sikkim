@@ -68,20 +68,20 @@ export function MonasteryFilters({ onSearch, onFilterChange, searchQuery }: Mona
     <div className="space-y-4">
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           placeholder="Search monasteries, locations, or features..."
           value={searchQuery}
           onChange={(e) => onSearch(e.target.value)}
-          className="pl-10 pr-12"
+            className="h-11 sm:h-12 pl-10 sm:pl-12 pr-12 rounded-xl border border-foreground/15 shadow-sm"
         />
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowFilters(!showFilters)}
-          className="absolute right-1 top-1/2 transform -translate-y-1/2"
+            className="absolute right-1 top-1/2 -translate-y-1/2"
         >
-          <Filter className="h-4 w-4" />
+            <Filter className="h-5 w-5" />
         </Button>
       </div>
 
