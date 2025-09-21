@@ -12,6 +12,7 @@ type Props = {
   zoom?: number
   className?: string
   height?: string | number
+  embedFov?: number
 }
 
 declare global {
@@ -32,11 +33,14 @@ export function GoogleStreetViewDynamic({
   zoom = 1,
   className = "",
   height = "70vh",
+  embedFov = 80,
 }: Props) {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+  const [panoId, setPanoId] = useState<string | null>(null)
+  // Always use JS interactive viewer for instant 360 interaction
 
   useEffect(() => {
     let cancelled = false
@@ -123,6 +127,7 @@ export function GoogleStreetViewDynamic({
                 motionTracking: false,
                 motionTrackingControl: false,
               }
+              setPanoId(data.location.pano || null)
               if (containerRef.current) {
                 // eslint-disable-next-line no-new
                 new g.maps.StreetViewPanorama(containerRef.current, panoOptions)
@@ -151,9 +156,10 @@ export function GoogleStreetViewDynamic({
   }, [lat, lng, placeName, radiusMeters, heading, pitch, zoom, key])
 
   const panoLink = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`
+  // Removed iframe embed fallback to avoid the "Use interactive viewer" click overlay
 
   return (
-    <div className={className} style={{ width: "100%", height }}>
+    <div className={className} style={{ width: "100%", height, position: 'relative' }}>
       <div ref={containerRef} style={{ width: "100%", height: "100%", border: 0, position: "relative" }} />
       {!key && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/30">

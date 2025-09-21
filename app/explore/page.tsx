@@ -93,20 +93,20 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div className="min-w-0">
               <h1 className="text-3xl font-bold text-foreground mb-2">Explore Monasteries</h1>
               <p className="text-muted-foreground">
                 Discover the sacred heritage of Sikkim through {monasteries.length} monasteries
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"

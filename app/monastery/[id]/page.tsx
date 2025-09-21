@@ -46,6 +46,19 @@ export default function MonasteryDetailPage() {
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
 
+  // Track recently visited monasteries for recommendations
+  useEffect(() => {
+    const id = params.id as string
+    if (!id) return
+    try {
+      const key = "recent-monasteries"
+      const raw = localStorage.getItem(key)
+      const list: string[] = raw ? JSON.parse(raw) : []
+      const next = [id, ...list.filter((x) => x !== id)].slice(0, 10)
+      localStorage.setItem(key, JSON.stringify(next))
+    } catch {}
+  }, [params.id])
+
   useEffect(() => {
     let active = true
     async function loadGooglePhotos() {

@@ -13,7 +13,7 @@ interface MonasteryCardProps {
 
 export function MonasteryCard({ monastery }: MonasteryCardProps) {
   return (
-    <Card className="overflow-hidden transition-all duration-300 group pt-0">
+    <Card className="overflow-hidden transition-all duration-300 group pt-0 rounded-xl">
       <div className="relative overflow-hidden aspect-[4/3] rounded-t-xl">
         <img
           src={monastery.images[0] || "/placeholder.svg"}
