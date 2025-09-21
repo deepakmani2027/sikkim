@@ -315,12 +315,31 @@ export function TransportPanel() {
             </div>
             <div className="md:col-span-3">
               <Label className="text-primary font-semibold mb-2 block">Destination Monastery</Label>
-              <Select value={monasteryId} onValueChange={setMonasteryId}>
-                <SelectTrigger className="bg-white/90 border-amber-300 rounded-2xl h-12 focus:ring-primary/30"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {monasteries.map((m)=> <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {/* Mobile: native select to avoid off-screen popovers */}
+              <select
+                className="sm:hidden block w-full h-12 rounded-2xl bg-white/90 border border-amber-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                value={monasteryId}
+                onChange={(e)=> setMonasteryId(e.target.value)}
+              >
+                {monasteries.map((m)=> (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              {/* Tablet/Desktop: Radix select with portal and max height */}
+              <div className="hidden sm:block">
+                <Select value={monasteryId} onValueChange={setMonasteryId}>
+                  <SelectTrigger className="bg-white/90 border-amber-300 rounded-2xl h-12 w-full focus:ring-primary/30">
+                    <SelectValue placeholder="Choose a monastery" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" sideOffset={8} className="z-[60] w-[var(--radix-select-trigger-width)] max-h-[50vh] overflow-auto bg-amber-50/95 border border-amber-300 rounded-2xl shadow-lg">
+                    {monasteries.map((m)=> (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="md:col-span-4 flex justify-end">
               <Button className="w-full h-12 rounded-2xl text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={fetchPricing}>Get Prices</Button>
@@ -490,20 +509,28 @@ export function TransportPanel() {
                     {contactsDest.taxi.length === 0 && (<div className="text-sm text-muted-foreground">No taxi listings near the monastery.</div>)}
                     <ul className="space-y-2">
                       {contactsDest.taxi.map((x)=> (
-                        <li key={x.id} className="flex items-center justify-between rounded-2xl bg-white/80 border border-amber-200 px-3 py-2">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-primary">{x.name}</div>
-                            <div className="text-xs text-muted-foreground">{x.distanceKm} km • {x.address||'Taxi service'}</div>
+                        <li key={x.id} className="rounded-2xl bg-white/90 border border-amber-200 px-3 py-2 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium text-primary text-base leading-snug line-clamp-2 break-words">
+                                {x.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground whitespace-normal break-words">
+                                {x.distanceKm} km • {x.address||'Taxi service'}
+                              </div>
+                            </div>
+                            <div className="sm:shrink-0">
+                              {x.phone ? (
+                                <Button size="sm" className="w-full sm:w-auto rounded-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={()=> window.open(telHref(x.phone!),'_self')}>
+                                  <Phone className="h-4 w-4 mr-1"/> Call
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="outline" className="w-full sm:w-auto rounded-full" disabled={!!resolvingPhones[x.id]} onClick={()=> resolveAndCall(x,'taxi_stand')}>
+                                  {resolvingPhones[x.id] ? <><Loader2 className="h-4 w-4 mr-1 animate-spin"/>Finding…</> : <><Phone className="h-4 w-4 mr-1"/> Call</>}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          {x.phone ? (
-                            <Button size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={()=> window.open(telHref(x.phone!),'_self')}>
-                              <Phone className="h-4 w-4 mr-1"/> Call
-                            </Button>
-                          ) : (
-                            <Button size="sm" variant="outline" className="rounded-full" disabled={!!resolvingPhones[x.id]} onClick={()=> resolveAndCall(x,'taxi_stand')}>
-                              {resolvingPhones[x.id] ? <><Loader2 className="h-4 w-4 mr-1 animate-spin"/>Finding…</> : <><Phone className="h-4 w-4 mr-1"/> Call</>}
-                            </Button>
-                          )}
                         </li>
                       ))}
                     </ul>
@@ -513,20 +540,28 @@ export function TransportPanel() {
                     {contactsDest.bus.length === 0 && (<div className="text-sm text-muted-foreground">No bus station listings near the monastery.</div>)}
                     <ul className="space-y-2">
                       {contactsDest.bus.map((x)=> (
-                        <li key={x.id} className="flex items-center justify-between rounded-2xl bg-white/80 border border-amber-200 px-3 py-2">
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-primary">{x.name}</div>
-                            <div className="text-xs text-muted-foreground">{x.distanceKm} km • {x.address||'Bus station'}</div>
+                        <li key={x.id} className="rounded-2xl bg-white/90 border border-amber-200 px-3 py-2 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium text-primary text-base leading-snug line-clamp-2 break-words">
+                                {x.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground whitespace-normal break-words">
+                                {x.distanceKm} km • {x.address||'Bus station'}
+                              </div>
+                            </div>
+                            <div className="sm:shrink-0">
+                              {x.phone ? (
+                                <Button size="sm" className="w-full sm:w-auto rounded-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={()=> window.open(telHref(x.phone!),'_self')}>
+                                  <Phone className="h-4 w-4 mr-1"/> Call
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="outline" className="w-full sm:w-auto rounded-full" disabled={!!resolvingPhones[x.id]} onClick={()=> resolveAndCall(x,'bus_station')}>
+                                  {resolvingPhones[x.id] ? <><Loader2 className="h-4 w-4 mr-1 animate-spin"/>Finding…</> : <><Phone className="h-4 w-4 mr-1"/> Call</>}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          {x.phone ? (
-                            <Button size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={()=> window.open(telHref(x.phone!),'_self')}>
-                              <Phone className="h-4 w-4 mr-1"/> Call
-                            </Button>
-                          ) : (
-                            <Button size="sm" variant="outline" className="rounded-full" disabled={!!resolvingPhones[x.id]} onClick={()=> resolveAndCall(x,'bus_station')}>
-                              {resolvingPhones[x.id] ? <><Loader2 className="h-4 w-4 mr-1 animate-spin"/>Finding…</> : <><Phone className="h-4 w-4 mr-1"/> Call</>}
-                            </Button>
-                          )}
                         </li>
                       ))}
                     </ul>

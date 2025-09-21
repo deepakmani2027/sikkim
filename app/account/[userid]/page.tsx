@@ -30,7 +30,7 @@ export default function AccountPage({ params }: { params: { userid: string } }) 
   if (!isAuthenticated || !user) return null
 
   const goProfile = () => router.push("/profile")
-  const goFavorite = () => router.push("/favorites")
+  const goFavorite = () => router.push("/profile/favorite")
   const doLogout = () => {
     logout()
     router.push("/auth")

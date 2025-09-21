@@ -125,6 +125,16 @@ export function Navbar() {
             <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
               <Link href="/virtual-tours">Virtual Tours</Link>
             </Button>
+            {user && (
+              <>
+                <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
+                  <Link href="/profile">Profile</Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
+                  <Link href="/profile/favorite">Favorite</Link>
+                </Button>
+              </>
+            )}
             <Button variant="ghost" size="sm" onClick={logout} className="w-full justify-start text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Sign out

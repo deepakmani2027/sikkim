@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter, usePathname, notFound } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { getFavorites, isFavorite as isFav, toggleFavorite } from "@/lib/favorites"
 import { Navbar } from "@/components/layout/navbar"
 import { AudioGuide } from "@/components/interactive/audio-guide"
 import { Button } from "@/components/ui/button"
@@ -29,12 +30,13 @@ import {
   X,
 } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { toast } from "sonner"
 import Link from "next/link"
 
 export default function MonasteryDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   const pathname = usePathname()
   const [monastery, setMonastery] = useState(getMonasteryById(params.id as string))
   const [selectedImage, setSelectedImage] = useState(0)
@@ -59,6 +61,15 @@ export default function MonasteryDetailPage() {
       localStorage.setItem(key, JSON.stringify(next))
     } catch {}
   }, [params.id])
+
+  // Initialize favorite state for logged-in user
+  useEffect(() => {
+    try {
+      const id = params.id as string
+      if (!id || !user) return
+      setIsFavorite(isFav(user.id, id))
+    } catch {}
+  }, [user?.id, params.id])
 
   useEffect(() => {
     let active = true
@@ -96,6 +107,34 @@ export default function MonasteryDetailPage() {
     const base = monastery?.images ?? []
     return [...base, ...googleImages]
   }, [monastery?.images, googleImages])
+
+  async function handleShare() {
+    try {
+      const url = typeof window !== "undefined" ? window.location.href : ""
+      const title = monastery?.name || "Monastery"
+      const text = monastery ? `${monastery.name} — ${monastery.location}` : ""
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title, text, url })
+        return
+      }
+      if (typeof navigator !== "undefined" && navigator.clipboard && url) {
+        await navigator.clipboard.writeText(url)
+        toast.success("Link copied to clipboard")
+        return
+      }
+      // Last resort: prompt for manual copy
+      if (url) {
+        window.prompt("Copy this link", url)
+      }
+    } catch (err: any) {
+      // Ignore AbortError (user cancelled). Show fallback copy else.
+      try {
+        const url = window.location.href
+        await navigator.clipboard.writeText(url)
+        toast.success("Link copied to clipboard")
+      } catch {}
+    }
+  }
 
   const goToAudioGuide = () => {
     setActiveTab("audio")
@@ -215,10 +254,25 @@ In short, Rumtek Monastery is like a living museum of Buddhist art and sacred he
             Back to Explore
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleShare} aria-label="Share monastery">
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setIsFavorite(!isFavorite)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!user) {
+                  toast.error("Please login to save favorites")
+                  router.push(`/auth?returnTo=${encodeURIComponent(pathname || "/")}`)
+                  return
+                }
+                const id = String(params.id)
+                const res = toggleFavorite(user.id, id)
+                setIsFavorite(res.active)
+                toast.success(res.active ? "Added to favorites" : "Removed from favorites")
+              }}
+              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
               <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
           </div>
