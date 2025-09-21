@@ -38,8 +38,17 @@ export default function VirtualToursIndexPage() {
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {tours.map((tour) => (
             <Card key={tour.id} className="overflow-hidden pt-0">
-              <div className="aspect-video w-full bg-muted  ">
-                <img src={tour.image} alt={tour.name} className="w-full h-full object-cover" />
+              <div className="relative w-full h-56 sm:h-60 lg:h-64 bg-muted overflow-hidden">
+                <img
+                  src={tour.image}
+                  alt={tour.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    if (e.currentTarget.src.endsWith("/placeholder.jpg")) return
+                    e.currentTarget.src = "/placeholder.jpg"
+                  }}
+                />
               </div>
               <CardHeader>
                 <div className="flex items-center justify-between">

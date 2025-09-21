@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LoginForm } from "@/components/auth/login-form"
 import { SignupForm } from "@/components/auth/signup-form"
 import { useAuth } from "@/hooks/use-auth"
@@ -11,15 +11,17 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const { isAuthenticated, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams?.get("returnTo") || "/dashboard"
 
   // Background indices
   const [bgIndex, setBgIndex] = useState(0)
   const [prevIndex, setPrevIndex] = useState<number | null>(null)
 
-  // Redirect when authenticated
+  // Redirect when authenticated (respect returnTo)
   useEffect(() => {
-    if (isAuthenticated && !loading) router.push("/dashboard")
-  }, [isAuthenticated, loading, router])
+    if (isAuthenticated && !loading) router.push(returnTo)
+  }, [isAuthenticated, loading, router, returnTo])
 
   // Cycle backgrounds with slide-blur transition
   useEffect(() => {
