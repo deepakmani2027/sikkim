@@ -269,3 +269,21 @@
 .auth-slide-out { animation: slide-blur-out 600ms ease-in forwards; }
 .auth-zoom-in { animation: cross-zoom-in 700ms ease-out forwards; }
 .auth-zoom-out { animation: cross-zoom-out 700ms ease-in forwards; }
+
+/* OTP invalid shake animation */
+@keyframes otp-shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.otp-shake {
+  animation: otp-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otp-shake { animation: none; }
+}
