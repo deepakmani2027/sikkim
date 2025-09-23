@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -32,97 +32,23 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register, loading } = useAuth()
 
-  // OTP state
-  const [phase, setPhase] = useState<"form" | "otp">("form")
-  const [otp, setOtp] = useState("")
-  const isOtpComplete = otp.length === 6
-  const [otpShake, setOtpShake] = useState(false)
-  const [otpInvalid, setOtpInvalid] = useState(false)
-
-  // InputOTP manages focus and caret automatically
-  
-  const [sendingOtp, setSendingOtp] = useState(false)
-  const [verifyingOtp, setVerifyingOtp] = useState(false)
-  const [resendIn, setResendIn] = useState(0)
-
-  useEffect(() => {
-    const t = setInterval(() => setResendIn((s) => (s > 0 ? s - 1 : 0)), 1000)
-    return () => clearInterval(t)
-  }, [resendIn])
-
+=======
+>>>>>>> Stashed changes
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (phase === "form") {
-      if (!formData.name || !formData.email || !formData.password || !formData.role) {
-        setError("Please fill in all fields")
-        return
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match")
-        return
-      }
-      if (formData.password.length < 6) {
-        setError("Password must be at least 6 characters")
-        return
-      }
-
-      // Step 1: Pre-check if account exists, then send OTP via our API route
-      try {
-        const exists = authService.emailExists(formData.email)
-        if (exists) {
-          setError("An account already exists for this email. Please sign in.")
-          return
-        }
-        setSendingOtp(true)
-        const resp = await fetch("/api/auth/send-otp", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: formData.email }),
-        })
-        if (!resp.ok) {
-          const data = await resp.json().catch(() => ({}))
-          throw new Error(data?.error || `Failed to send OTP (${resp.status})`)
-        }
-        try {
-          const pending = {
-            email: (formData.email || "").trim().toLowerCase(),
-            name: formData.name,
-            role: formData.role,
-            password: formData.password,
-            createdAt: Date.now(),
-          }
-          localStorage.setItem("sikkim_pending_signup", JSON.stringify(pending))
-        } catch {}
-        toast.success("OTP sent to your email")
-        router.push("/auth/verify-otp")
-      } catch (err: any) {
-        setError(err?.message || "Failed to send OTP")
-      } finally {
-        setSendingOtp(false)
-      }
-    } else {
-      // Step 2: Verify OTP via our API, then create local account
-      const code = otp
-      if (!code || code.length < 6) {
-        setError("Enter the 6-digit OTP")
-        return
-      }
-      try {
-        setVerifyingOtp(true)
-        const resp = await fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ code, email: formData.email }),
-        })
-        if (!resp.ok) {
-          const data = await resp.json().catch(() => ({}))
-          // Trigger shake on invalid code
-          setOtpShake(true)
-          setOtpInvalid(true)
-          setTimeout(() => setOtpShake(false), 420)
-          throw new Error(data?.error || `Invalid OTP (${resp.status})`)
-        }
+    if (!formData.name || !formData.email || !formData.password || !formData.role) {
+      toast.error("Please fill in all fields")
+      return
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
 
     const result = await register(
       formData.email,
@@ -164,8 +90,6 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
   const updateFormData = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
-
-  // No extra handlers needed for InputOTP
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
@@ -300,63 +224,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
               </div>
             </div>
 
-            {phase === "otp" && (
-              <div className="space-y-3">
-                <Label className="text-foreground flex items-center gap-2">
-                  <KeyRound className="h-4 w-4" /> Enter 6‑digit OTP sent to your email
-                </Label>
-                <div className={`flex items-center justify-center ${otpShake ? "otp-shake" : ""}`}>
-                  <InputOTP
-                    maxLength={6}
-                    value={otp}
-                    onChange={(v) => { setOtp(v.replace(/\D/g, "")); setOtpInvalid(false) }}
-                    containerClassName=""
-                  >
-                    <InputOTPGroup className="gap-2 sm:gap-3">
-                      <InputOTPSlot index={0} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                      <InputOTPSlot index={1} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                      <InputOTPSlot index={2} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                      <InputOTPSlot index={3} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                      <InputOTPSlot index={4} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                      <InputOTPSlot index={5} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{resendIn > 0 ? `Resend in ${resendIn}s` : "Didn't get the code?"}</span>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="p-0 h-auto"
-                    disabled={resendIn > 0 || sendingOtp}
-                    onClick={async () => {
-                      try {
-                        setSendingOtp(true)
-                        const resp = await fetch("/api/auth/send-otp", {
-                          method: "POST",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({ email: formData.email }),
-                        })
-                        if (!resp.ok) {
-                          const data = await resp.json().catch(() => ({}))
-                          throw new Error(data?.error || `Failed to resend OTP (${resp.status})`)
-                        }
-                        setResendIn(60)
-                        toast.success("OTP resent")
-                      } catch (err: any) {
-                        setError(err?.message || "Failed to resend OTP")
-                      } finally {
-                        setSendingOtp(false)
-                      }
-                    }}
-                  >
-                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Resend
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {error && <div className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded">{error}</div>}
+            {/* Error display is now handled by toasts */}
 
             <Button
               type="submit"

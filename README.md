@@ -29,46 +29,6 @@ Continue building your app on:
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository# sikkim
 
-<<<<<<< Updated upstream
-## Maps & Directions Configuration
-
-This project now uses the Google Maps JavaScript API and Directions API for:
-- Interactive maps on monastery directions page (`/monastery/[id]/directions`)
-- Transport panel map in `/service`
-- Driving & walking route polylines and time/distance estimates
-
-### Environment Variables
-
-Add the following to your environment (e.g. `.env.local` for local dev and Vercel project settings for production):
-
-```
-GOOGLE_MAPS_API_KEY=YOUR_SERVER_KEY_WITH_DIRECTIONS
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_BROWSER_KEY (can be same key if restricted properly)
-```
-
-Recommended restrictions:
-- Browser key: HTTP referrer restrictions for your domain(s); enable Maps JavaScript API.
-- Server key: IP restriction (Vercel build / serverless IP ranges if desired); enable Directions API.
-
-### Internal Proxy
-
-`/api/directions` proxies requests to Google Directions so the browser does not expose the server key. Parameters:
-`/api/directions?origin=lat,lng&destination=lat,lng&modes=driving,walking,transit`
-
-Returns:
-```
-{
-	routes: [
-		{ mode, distanceMeters, durationSeconds, polyline: { path: [{lat,lng}] } }, ...
-	]
-}
-```
-
-If the API keys are missing the UI will fall back to simple haversine estimates.
-
-no changes
-sikkim
-=======
 ## Google Scholar search (SerpAPI proxy)
 
 To enable researcher Google Scholar search via SerpAPI:
@@ -83,4 +43,3 @@ SERPAPI_KEY=your_serpapi_key_here
    - q (query), cites, as_ylo, as_yhi, scisbd, cluster
 
 3. The UI provides year filters, recent-only toggle (scisbd), cited-by and PDF quick links.
->>>>>>> Stashed changes
