@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapContainer, Marker, Popup, TileLayer, Polyline } from "react-leaflet"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
+import { GoogleMap } from "@/components/interactive/google-map"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -79,18 +77,7 @@ function durationSecondsFromKm(distanceKm: number, kmh: number) {
   return (distanceKm / kmh) * 3600
 }
 
-function BoundsUpdater({ points }: { points: [number, number][] }) {
-  // Lazy import to avoid SSR issues; react-leaflet supplies this hook internally
-  const { useMap } = require("react-leaflet")
-  const map = useMap()
-  useEffect(() => {
-    if (points.length) {
-      const b = L.latLngBounds(points as any)
-      map.fitBounds(b, { padding: [40, 40] })
-    }
-  }, [map, points])
-  return null
-}
+// Removed Leaflet BoundsUpdater; GoogleMap handles fitting when markers/polyline set
 
 export default function DirectionsPage() {
   const params = useParams()
@@ -162,35 +149,24 @@ export default function DirectionsPage() {
       if (!userLoc || !monastery) return
       setLoadingRoute(true)
       setError(null)
-      const from = `${userLoc.lon},${userLoc.lat}`
-      const to = `${monastery.coordinates.lng},${monastery.coordinates.lat}`
+      const origin = `${userLoc.lat},${userLoc.lon}`
+      const destination = `${monastery.coordinates.lat},${monastery.coordinates.lng}`
       try {
-        const [dr, wr] = await Promise.all([
-          fetch(`https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson`).then(
-            (r) => r.json(),
-          ),
-          fetch(`https://router.project-osrm.org/route/v1/foot/${from};${to}?overview=full&geometries=geojson`).then(
-            (r) => r.json(),
-          ),
-        ])
-
-        if (dr?.routes?.[0]) {
-          const r = dr.routes[0]
-          const coords: [number, number][] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]])
-          setRouteDriving({ coords, distance: r.distance, duration: r.duration })
-        } else {
-          setRouteDriving(null)
-        }
-
-        if (wr?.routes?.[0]) {
-          const r = wr.routes[0]
-          const coords: [number, number][] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]])
-          setRouteWalking({ coords, distance: r.distance, duration: r.duration })
-        } else {
-          setRouteWalking(null)
-        }
-      } catch (e) {
-        setError("Could not fetch routes. Showing estimates only.")
+        const resp = await fetch(`/api/directions?origin=${origin}&destination=${destination}&modes=driving,walking`)
+        if (!resp.ok) throw new Error('directions failed')
+        const data = await resp.json()
+        const driving = data.routes?.find((r:any)=> r.mode === 'driving')
+        const walking = data.routes?.find((r:any)=> r.mode === 'walking')
+        if (driving && driving.polyline?.path?.length){
+          const coords: [number, number][] = driving.polyline.path.map((p:any)=> [p.lat, p.lng])
+          setRouteDriving({ coords, distance: driving.distanceMeters, duration: driving.durationSeconds })
+        } else setRouteDriving(null)
+        if (walking && walking.polyline?.path?.length){
+          const coords: [number, number][] = walking.polyline.path.map((p:any)=> [p.lat, p.lng])
+          setRouteWalking({ coords, distance: walking.distanceMeters, duration: walking.durationSeconds })
+        } else setRouteWalking(null)
+      } catch (e){
+        setError('Could not fetch routes. Showing estimates only.')
         setRouteDriving(null)
         setRouteWalking(null)
       } finally {
@@ -314,13 +290,7 @@ export default function DirectionsPage() {
 
   const displayAirport = nearestAirportDyn ?? nearestAirportFallback
 
-  const markerIcon = L.icon({
-    iconUrl: "/marker-red-3d.svg",
-    iconRetinaUrl: "/marker-red-3d.svg",
-    iconSize: [36, 54],
-    iconAnchor: [18, 52],
-    popupAnchor: [0, -44],
-  })
+  // Google maps marker config handled inline
 
   return (
     <div className="min-h-screen bg-background">
@@ -416,47 +386,16 @@ export default function DirectionsPage() {
         {/* Map */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           <div className="w-full h-full min-h-[420px]">
-            <MapContainer
-              bounds={L.latLngBounds(allPoints as any) as any}
+            <GoogleMap
+              center={{ lat: monasteryPoint[0], lng: monasteryPoint[1] }}
+              fitBoundsToMarkers
+              markers={[
+                { position: { lat: monasteryPoint[0], lng: monasteryPoint[1] }, title: monastery.name, iconUrl: "/marker-red-3d.svg" },
+                ...(userPoint ? [{ position: { lat: userPoint[0], lng: userPoint[1] }, title: userLoc?.label || 'Your location', iconUrl: '/marker-red.svg' }] : []),
+              ]}
+              polyline={activeMode === 'driving' && routeDriving?.coords ? { path: routeDriving.coords.map(c=> ({ lat: c[0], lng: c[1] })), color: '#c1121f' } : activeMode === 'walking' && routeWalking?.coords ? { path: routeWalking.coords.map(c=> ({ lat: c[0], lng: c[1] })), color: '#0d6efd' } : undefined}
               className="h-full w-full rounded-lg overflow-hidden"
-              zoom={9}
-              scrollWheelZoom
-            >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution={"&copy; OpenStreetMap contributors" as any} />
-              <Marker position={monasteryPoint as any} icon={markerIcon as any}>
-                <Popup>
-                  <div>
-                    <div className="font-medium">{monastery.name}</div>
-                    <div className="text-xs text-muted-foreground">{monastery.location}</div>
-                    <Link href={`/monastery/${monastery.id}`} className="text-primary text-xs underline">View details</Link>
-                  </div>
-                </Popup>
-              </Marker>
-              {userPoint && (
-                <Marker position={userPoint as any} icon={L.icon({ iconUrl: "/marker-red.svg", iconSize: [28, 42], iconAnchor: [14, 40] }) as any}>
-                  <Popup>{userLoc?.label ?? "Your location"}</Popup>
-                </Marker>
-              )}
-
-              {activeMode === "driving" && routeDriving?.coords && (
-                <Polyline positions={routeDriving.coords as any} pathOptions={{ color: "#c1121f", weight: 4 }} />
-              )}
-              {activeMode === "walking" && routeWalking?.coords && (
-                <Polyline positions={routeWalking.coords as any} pathOptions={{ color: "#0d6efd", weight: 4 }} />
-              )}
-              {activeMode === "driving" && !routeDriving?.coords && routeWalking?.coords && (
-                <Polyline positions={routeWalking.coords as any} pathOptions={{ color: "#6c757d", weight: 4, dashArray: "6 6" }} />
-              )}
-              {activeMode === "walking" && !routeWalking?.coords && routeDriving?.coords && (
-                <Polyline positions={routeDriving.coords as any} pathOptions={{ color: "#6c757d", weight: 4, dashArray: "6 6" }} />
-              )}
-              {!routeDriving?.coords && !routeWalking?.coords && loadingRoute && (
-                // subtle placeholder path style when loading
-                <></>
-              )}
-
-              <BoundsUpdater points={allPoints} />
-            </MapContainer>
+            />
           </div>
 
           {/* Stats */}

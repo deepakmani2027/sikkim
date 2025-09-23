@@ -11,10 +11,20 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Legacy path -> canonical
       {
-        source: "/monastery/:id/directions",
-        destination: "/monter/:id/direction",
-        permanent: false,
+        source: "/monter/:id/direction",
+        destination: "/monastery/:id/directions",
+        permanent: true,
+      },
+    ]
+  },
+  async rewrites() {
+    return [
+      // Also allow direct fetches to resolve without extra hop internally
+      {
+        source: "/monter/:id/direction",
+        destination: "/monastery/:id/directions",
       },
     ]
   },

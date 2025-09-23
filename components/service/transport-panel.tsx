@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Car, Bike, MapPin, Clock, IndianRupee, Phone, Loader2 } from "lucide-react"
+import { GoogleMap } from "@/components/interactive/google-map"
 import { AddressAutocomplete } from "@/components/interactive/address-autocomplete"
 import { haversineKm } from "@/lib/utils"
 import { regionBBoxes } from "@/lib/regions"
@@ -43,6 +44,7 @@ export function TransportPanel() {
   const [monasteryId, setMonasteryId] = useState<string>(monasteries[0]?.id || "")
   const dest = useMemo(()=> monasteries.find(m=>m.id===monasteryId), [monasteryId])
   const [pricing, setPricing] = useState<any[]|null>(null)
+  const [pricingLoading, setPricingLoading] = useState(false)
   const [loadingUserContacts, setLoadingUserContacts] = useState(false)
   const [loadingDestContacts, setLoadingDestContacts] = useState(false)
   const [contactsUser, setContactsUser] = useState<{ taxi: Contact[]; bus: Contact[] }>({ taxi: [], bus: [] })
@@ -116,15 +118,51 @@ export function TransportPanel() {
     }
   }
 
+  function computeFallbackPricing(distanceKm: number){
+    const vehicles = [
+      { id: 'bike', base: 40, perKm: 12, speedKmh: 35 },
+      { id: 'car-hatchback', base: 60, perKm: 15, speedKmh: 40 },
+      { id: 'car-sedan', base: 80, perKm: 18, speedKmh: 45 },
+      { id: 'car-suv', base: 100, perKm: 22, speedKmh: 45 },
+    ]
+    return vehicles.map(v=> ({
+      id: v.id,
+      vehicleType: v.id,
+      distanceKm: Number(distanceKm.toFixed(2)),
+      etaMin: Math.round((distanceKm / v.speedKmh) * 60 + 5),
+      estimatedPriceINR: Math.round(v.base + v.perKm * distanceKm)
+    }))
+  }
+
   async function fetchPricing(){
-    if (!from.lat || !from.lng || !dest) { toast.error("Enter from and destination"); return }
+    // If user hasn't typed but geolocation available, auto fill
+    if ((!from.lat || !from.lng) && geo.lat && geo.lng){
+      setFrom({ lat: geo.lat, lng: geo.lng, label: 'Current location' })
+    }
+    const useFrom = (from.lat && from.lng) ? from : (geo.lat && geo.lng ? { lat: geo.lat, lng: geo.lng } : null)
+    if (!useFrom || !dest) { toast.error("Enter or detect both origin and destination"); return }
+    setPricingLoading(true)
+    setPricing(null)
     try {
-      const r = await fetch(`/api/services/transport?from=${from.lat},${from.lng}&to=${dest.coordinates.lat},${dest.coordinates.lng}`)
-      const j = await r.json()
-      if (!r.ok) throw new Error(j.error || 'Failed')
+      const r = await fetch(`/api/services/transport?from=${useFrom.lat},${useFrom.lng}&to=${dest.coordinates.lat},${dest.coordinates.lng}`)
+      let j: any = null
+      try { j = await r.json() } catch {}
+      if (!r.ok || !j?.options){
+        throw new Error(j?.error || 'Transport pricing unavailable')
+      }
       setPricing(j.options)
       toast.success(`Found ${j.options.length} options`)
-    } catch (e:any) { toast.error(e.message) }
+    } catch (e:any) {
+      // Fallback simple computation if API failed
+      try {
+        const distanceKm = dest ? haversineKm({ lat: Number(useFrom.lat), lng: Number(useFrom.lng) }, dest.coordinates) : 0
+        const fallback = computeFallbackPricing(distanceKm)
+        setPricing(fallback)
+        toast.message(e?.message ? `${e.message}; using estimates` : 'Using estimated pricing')
+      } catch {
+        toast.error(e?.message || 'Pricing failed')
+      }
+    } finally { setPricingLoading(false) }
   }
 
   // Helper to sort and enrich a set
@@ -342,7 +380,9 @@ export function TransportPanel() {
               </div>
             </div>
             <div className="md:col-span-4 flex justify-end">
-              <Button className="w-full h-12 rounded-2xl text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={fetchPricing}>Get Prices</Button>
+              <Button disabled={pricingLoading} className="w-full h-12 rounded-2xl text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm disabled:opacity-60" onClick={fetchPricing}>
+                {pricingLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin"/> Loading...</> : 'Get Prices'}
+              </Button>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">Auto-detected or type to search. You can edit manually.</p>
@@ -393,6 +433,20 @@ export function TransportPanel() {
           )}
         </CardContent>
       </Card>
+
+      {userCoords && dest && (
+        <div className="mt-6 h-80 w-full rounded-3xl overflow-hidden border border-amber-200 shadow-sm">
+          <GoogleMap
+            center={{ lat: dest.coordinates.lat, lng: dest.coordinates.lng }}
+            fitBoundsToMarkers
+            markers={[
+              { position: { lat: dest.coordinates.lat, lng: dest.coordinates.lng }, title: dest.name, iconUrl: '/marker-red-3d.svg' },
+              { position: { lat: userCoords.lat, lng: userCoords.lng }, title: fromText || 'Your location', iconUrl: '/marker-red.svg' },
+            ]}
+            className="h-full w-full"
+          />
+        </div>
+      )}
 
       {/* Nearby Transport Contacts (Near You in Sikkim) */}
       {userCoords && (
