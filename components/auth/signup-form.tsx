@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/hooks/use-auth"
-import { authService } from "@/lib/auth"
-import { Loader2, Eye, EyeOff, Mail, User2, Lock, BadgeCheck, KeyRound, RotateCcw } from "lucide-react"
+import { Loader2, Eye, EyeOff, Mail, User2, Lock, BadgeCheck } from "lucide-react"
 import { toast } from "sonner"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -31,7 +30,6 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [error, setError] = useState("")
   const { register, loading } = useAuth()
 
   // OTP state
@@ -54,7 +52,6 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
 
     if (phase === "form") {
       if (!formData.name || !formData.email || !formData.password || !formData.role) {
@@ -127,28 +124,40 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
           throw new Error(data?.error || `Invalid OTP (${resp.status})`)
         }
 
-        const result = await register(
-          formData.email,
-          formData.password,
-          formData.name,
-          formData.role as "tourist" | "researcher" | "admin",
-        )
-        if (!result.success) {
-          const msg = (result.error || "Registration failed").toLowerCase()
-          if (msg.includes("already")) {
-            setError("An account already exists for this email. Please sign in.")
-          } else {
-            setError(result.error || "Registration failed")
-          }
-        } else {
-          toast.success("Email verified. Account created")
-          router.push("/auth")
-        }
-      } catch (err: any) {
-        setError(err?.message || "Invalid OTP")
-      } finally {
-        setVerifyingOtp(false)
+    const result = await register(
+      formData.email,
+      formData.password,
+      formData.name,
+      formData.role as "tourist" | "researcher" | "admin",
+    )
+
+    if (!result.success) {
+      const errorMessage = result.error || "Registration failed. Please try again."
+      if (errorMessage.toLowerCase().includes("already registered")) {
+        toast.error("Account Exists", {
+          description: "A user with this email is already registered. Please sign in instead.",
+          action: {
+            label: "Sign In",
+            onClick: onToggleMode,
+          },
+        })
+      } else if (errorMessage.toLowerCase().includes("already exists but is not verified")) {
+        toast.info("Confirmation Resent", {
+          description: "This email is already registered but not verified. We've sent a new confirmation link to your inbox.",
+          duration: 10000,
+        })
+        onToggleMode() // Switch to login view as a cue
+      } else {
+        toast.error("Registration Failed", {
+          description: errorMessage,
+        })
       }
+    } else {
+      toast.success("Verification Email Sent!", {
+        description: "Please check your email to verify your account before signing in.",
+        duration: 10000,
+      })
+      onToggleMode()
     }
   }
 
@@ -188,7 +197,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   onChange={(e) => updateFormData("name", e.target.value)}
                   placeholder="Enter your full name"
                   className="bg-input border-border pl-9"
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -206,7 +215,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   onChange={(e) => updateFormData("email", e.target.value)}
                   placeholder="Enter your email"
                   className="bg-input border-border pl-9"
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -215,7 +224,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
               <Label htmlFor="role" className="text-foreground">
                 I am a...
               </Label>
-              <Select value={formData.role} onValueChange={(value) => updateFormData("role", value)} disabled={loading || phase === "otp"}>
+              <Select value={formData.role} onValueChange={(value) => updateFormData("role", value)} disabled={loading}>
                 <SelectTrigger className="bg-input border-border">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
@@ -240,7 +249,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   onChange={(e) => updateFormData("password", e.target.value)}
                   placeholder="Create a password"
                   className="bg-input border-border pr-10 pl-9"
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 />
                 <Button
                   type="button"
@@ -248,7 +257,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -272,7 +281,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   onChange={(e) => updateFormData("confirmPassword", e.target.value)}
                   placeholder="Confirm your password"
                   className="bg-input border-border pr-10 pl-9"
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 />
                 <Button
                   type="button"
@@ -280,7 +289,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={loading || phase === "otp"}
+                  disabled={loading}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -352,22 +361,14 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-elevated"
-              disabled={loading || sendingOtp || verifyingOtp}
+              disabled={loading}
             >
-              {phase === "form" ? (
-                sendingOtp ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...
-                  </>
-                ) : (
-                  "Send OTP"
-                )
-              ) : verifyingOtp ? (
+              {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Registering...
                 </>
               ) : (
-                "Verify & Create Account"
+                "Create Account"
               )}
             </Button>
 

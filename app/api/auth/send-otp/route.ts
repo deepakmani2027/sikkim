@@ -30,6 +30,21 @@ export async function POST(req: Request) {
     const pass = process.env.SMTP_PASS
     const fromEmail = process.env.SMTP_SENDER_EMAIL || user
     const fromName = process.env.SMTP_SENDER_NAME || "Sikkim Monasteries"
+    const dryRun = (process.env.SMTP_DRY_RUN || "").toString().trim() === "1" || (process.env.SMTP_DRY_RUN || "").toString().toLowerCase() === "true"
+
+    // Development helper: allow bypassing SMTP to unblock local testing
+    if (dryRun) {
+      console.log("[OTP DRY RUN] Would send code %s to %s", code, email)
+      const res = NextResponse.json({ ok: true, dryRun: true }, { headers: { "cache-control": "no-store" } })
+      res.cookies.set("otp_token", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: Math.ceil(ttlMs / 1000),
+      })
+      return res
+    }
 
     if (!host || !user || !pass) {
       return NextResponse.json({ error: "SMTP not configured" }, { status: 500 })

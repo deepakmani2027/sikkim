@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,36 +11,66 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import { Loader2, Eye, EyeOff, Mail, Lock, ShieldCheck } from "lucide-react"
+import { toast } from "sonner"
 
 interface LoginFormProps {
   onToggleMode: () => void
 }
 
 export function LoginForm({ onToggleMode }: LoginFormProps) {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
-  const { login, loading } = useAuth()
+  const { login, loading, resendConfirmationEmail } = useAuth()
+
+  const handleResendConfirmation = async () => {
+    const promise = resendConfirmationEmail(email)
+    toast.promise(promise, {
+      loading: "Sending confirmation email...",
+      success: "Confirmation email sent! Please check your inbox.",
+      error: (err) => err.message || "Failed to send email.",
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
 
     if (!email || !password) {
-      setError("Please fill in all fields")
+      toast.error("Please fill in all fields")
       return
     }
 
     const result = await login(email, password)
     if (!result.success) {
-      setError(result.error || "Login failed")
+      const errorMessage = result.error || "An unknown error occurred."
+      if (errorMessage.toLowerCase().includes("email not confirmed")) {
+        toast.error("Email not verified.", {
+          description: "Please check your inbox to verify your email address before signing in.",
+          action: {
+            label: "Resend Email",
+            onClick: handleResendConfirmation,
+          },
+          duration: 10000,
+        })
+      } else if (errorMessage.toLowerCase().includes("invalid login credentials")) {
+        toast.error("Login Failed", {
+          description: "Incorrect email or password. Please try again.",
+        })
+      } else {
+        toast.error("Login Failed", {
+          description: errorMessage,
+        })
+      }
+    } else {
+      toast.success("Signed in successfully!")
+      router.push("/") // Redirect to dashboard on success
     }
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
-  <Card className="w-full max-w-md mx-auto bg-card/80 backdrop-blur-12xl border-[0.5px] border-border/50 shadow-floating">
+      <Card className="w-full max-w-md mx-auto bg-card/80 backdrop-blur-12xl border-[0.5px] border-border/50 shadow-floating">
         <CardHeader className="text-center space-y-3">
           <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center shadow-soft">
             <div className="text-2xl text-primary-foreground">🏛️</div>
@@ -102,15 +133,12 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
                 )}
               </Button>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <label className="inline-flex items-center gap-2 text-muted-foreground">
-                <input type="checkbox" className="accent-primary" /> Remember me
-              </label>
+            <div className="flex items-center justify-end text-xs">
               <Button type="button" variant="link" className="p-0 h-auto text-primary">Forgot password?</Button>
             </div>
           </div>
 
-          {error && <div className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded">{error}</div>}
+          {/* Error display is now handled by toasts */}
 
           <Button
             type="submit"
@@ -144,3 +172,4 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
     </motion.div>
   )
 }
+

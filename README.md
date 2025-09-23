@@ -29,6 +29,7 @@ Continue building your app on:
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository# sikkim
 
+<<<<<<< Updated upstream
 ## Maps & Directions Configuration
 
 This project now uses the Google Maps JavaScript API and Directions API for:
@@ -67,3 +68,19 @@ If the API keys are missing the UI will fall back to simple haversine estimates.
 
 no changes
 sikkim
+=======
+## Google Scholar search (SerpAPI proxy)
+
+To enable researcher Google Scholar search via SerpAPI:
+
+1. Add a `.env.local` file with:
+
+```
+SERPAPI_KEY=your_serpapi_key_here
+```
+
+2. Use the Researcher Dashboard to query. The server route `GET /api/scholar` proxies to SerpAPI `engine=google_scholar` and supports:
+   - q (query), cites, as_ylo, as_yhi, scisbd, cluster
+
+3. The UI provides year filters, recent-only toggle (scisbd), cited-by and PDF quick links.
+>>>>>>> Stashed changes

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { LoginForm } from "@/components/auth/login-form"
 import { SignupForm } from "@/components/auth/signup-form"
+import { SocialAuthButtons } from "@/components/auth/social-auth-buttons"
 import { useAuth } from "@/hooks/use-auth"
 import { AUTH_BG_IMAGES } from "@/lib/authBackgrounds"
 
@@ -85,6 +86,9 @@ export default function AuthPage() {
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          <div className="mb-4">
+            <SocialAuthButtons />
+          </div>
           {isLogin ? (
             <LoginForm onToggleMode={() => setIsLogin(false)} />
           ) : (

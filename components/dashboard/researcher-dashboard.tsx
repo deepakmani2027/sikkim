@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, FileText, Download, BookOpen, Filter, Clock, Archive } from "lucide-react"
 import { useState } from "react"
+import { ScholarSearch } from "@/components/research/ScholarSearch"
 
 export function ResearcherDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -113,33 +114,13 @@ export function ResearcherDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            AI-Powered Archive Search
+            AI-Powered Research Paper Search
           </CardTitle>
           <CardDescription>Use natural language to search through manuscripts and artifacts</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g., 'Find manuscripts about meditation practices from the 16th century'"
-                className="flex-1"
-              />
-              <Button>Search</Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                Buddhist rituals
-              </Badge>
-              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                Architectural history
-              </Badge>
-              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                Ancient texts
-              </Badge>
-              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                Ceremonial artifacts
-              </Badge>
-            </div>
+            <ScholarSearch />
           </div>
         </CardContent>
       </Card>
