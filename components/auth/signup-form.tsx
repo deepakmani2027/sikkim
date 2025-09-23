@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { authService } from "@/lib/auth"
 import { Loader2, Eye, EyeOff, Mail, User2, Lock, BadgeCheck, KeyRound, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
 interface SignupFormProps {
   onToggleMode: () => void
@@ -35,26 +36,12 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
 
   // OTP state
   const [phase, setPhase] = useState<"form" | "otp">("form")
-  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]) 
-  const isOtpComplete = otpDigits.every((d) => d && d.length === 1)
+  const [otp, setOtp] = useState("")
+  const isOtpComplete = otp.length === 6
   const [otpShake, setOtpShake] = useState(false)
-  const otpInputsRef = useRef<Array<HTMLInputElement | null>>([])
+  const [otpInvalid, setOtpInvalid] = useState(false)
 
-  // Autofocus first OTP box when phase switches to OTP
-  useEffect(() => {
-    if (phase === "otp") {
-      const focusFirst = () => {
-        const el = otpInputsRef.current[0]
-        if (el) {
-          el.focus()
-          el.select?.()
-        }
-      }
-      // Next tick for reliability
-      const t = setTimeout(focusFirst, 100)
-      return () => clearTimeout(t)
-    }
-  }, [phase])
+  // InputOTP manages focus and caret automatically
   
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
@@ -119,7 +106,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
       }
     } else {
       // Step 2: Verify OTP via our API, then create local account
-      const code = otpDigits.join("")
+      const code = otp
       if (!code || code.length < 6) {
         setError("Enter the 6-digit OTP")
         return
@@ -129,12 +116,13 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
         const resp = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, email: formData.email }),
         })
         if (!resp.ok) {
           const data = await resp.json().catch(() => ({}))
           // Trigger shake on invalid code
           setOtpShake(true)
+          setOtpInvalid(true)
           setTimeout(() => setOtpShake(false), 420)
           throw new Error(data?.error || `Invalid OTP (${resp.status})`)
         }
@@ -168,113 +156,7 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleOtpChange = (index: number, val: string) => {
-    const input = (val || "").replace(/\D/g, "")
-    
-    if (!input) {
-      // If backspace on empty field, focus previous
-      setOtpDigits((prev) => {
-        const next = [...prev]
-        next[index] = ""
-        return next
-      })
-      return
-    }
-    
-    setOtpDigits((prev) => {
-      const next = [...prev]
-      next[index] = input[0] // Only take the first character
-      return next
-    })
-    
-    // Auto-focus to next input if current input is filled
-    if (index < 5 && input) {
-      setTimeout(() => {
-        focusOtpIndex(index + 1)
-      }, 10)
-    }
-  }
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace") {
-      e.preventDefault()
-      
-      if (otpDigits[index]) {
-        // If current field has value, clear it but stay focused
-        setOtpDigits((prev) => {
-          const next = [...prev]
-          next[index] = ""
-          return next
-        })
-      } else if (index > 0) {
-        // If current field is empty, move to previous field and clear it
-        focusOtpIndex(index - 1)
-        setOtpDigits((prev) => {
-          const next = [...prev]
-          next[index - 1] = ""
-          return next
-        })
-      }
-    }
-    else if (e.key === "ArrowLeft" && index > 0) {
-      e.preventDefault()
-      focusOtpIndex(index - 1)
-    }
-    else if (e.key === "ArrowRight" && index < 5) {
-      e.preventDefault()
-      focusOtpIndex(index + 1)
-    }
-    else if (e.key === "Delete") {
-      e.preventDefault()
-      setOtpDigits((prev) => {
-        const next = [...prev]
-        next[index] = ""
-        return next
-      })
-    }
-  }
-
-  const handleOtpPaste = (startIndex: number, e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault()
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6 - startIndex)
-    if (!text) return
-    const arr = text.split("")
-    setOtpDigits((prev) => {
-      const next = [...prev]
-      for (let i = 0; i < arr.length && startIndex + i < 6; i++) {
-        next[startIndex + i] = arr[i]
-      }
-      return next
-    })
-    const nextIndex = Math.min(startIndex + arr.length, 5)
-    setTimeout(() => {
-      focusOtpIndex(nextIndex)
-    }, 10)
-  }
-
-  const focusOtpIndex = (i: number) => {
-    const el = otpInputsRef.current[i]
-    if (!el) return
-    
-    requestAnimationFrame(() => {
-      el.focus()
-      el.select?.()
-    })
-  }
-
-  // Handle auto-focus when digits are filled
-  useEffect(() => {
-    if (phase !== "otp") return
-    
-    // Find first empty field and focus it
-    const firstEmptyIndex = otpDigits.findIndex(digit => digit === "")
-    if (firstEmptyIndex !== -1) {
-      // If there's an empty field, focus it
-      setTimeout(() => {
-        focusOtpIndex(firstEmptyIndex)
-      }, 10)
-    }
-  }, [otpDigits, phase])
+  // No extra handlers needed for InputOTP
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
@@ -414,37 +296,22 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
                 <Label className="text-foreground flex items-center gap-2">
                   <KeyRound className="h-4 w-4" /> Enter 6‑digit OTP sent to your email
                 </Label>
-                <div className={`flex items-center justify-center gap-2 ${otpShake ? "otp-shake" : ""}`}>
-                  {otpDigits.map((d, i) => (
-                    <Input
-                      key={i}
-                      ref={(el) => (otpInputsRef.current[i] = el)}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      value={d}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      onPaste={(e) => handleOtpPaste(i, e)}
-                      onFocus={(e) => e.currentTarget.select()}
-                      placeholder="•"
-                      className={`w-12 h-12 text-center text-xl font-semibold rounded-md transition-all duration-150 
-                        ${d ? "text-foreground" : "text-muted-foreground"} 
-                        ${d ? (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border") : "bg-background/60 border-border/70"} 
-                        focus:ring-2 focus:ring-primary/50 focus:border-primary/60 focus:shadow-md focus:shadow-primary/10 
-                        data-[empty=true]:placeholder-opacity-60 
-                        tracking-widest`}
-                      data-empty={d ? "false" : "true"}
-                      aria-label={`OTP digit ${i + 1}`}
-                      autoComplete={i === 0 ? "one-time-code" : undefined}
-                      disabled={loading}
-                      onKeyPress={(e) => {
-                        if (!/[0-9]/.test(e.key)) {
-                          e.preventDefault()
-                        }
-                      }}
-                    />
-                  ))}
+                <div className={`flex items-center justify-center ${otpShake ? "otp-shake" : ""}`}>
+                  <InputOTP
+                    maxLength={6}
+                    value={otp}
+                    onChange={(v) => { setOtp(v.replace(/\D/g, "")); setOtpInvalid(false) }}
+                    containerClassName=""
+                  >
+                    <InputOTPGroup className="gap-2 sm:gap-3">
+                      <InputOTPSlot index={0} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                      <InputOTPSlot index={1} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                      <InputOTPSlot index={2} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                      <InputOTPSlot index={3} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                      <InputOTPSlot index={4} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                      <InputOTPSlot index={5} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : (isOtpComplete ? "bg-green-50 border-green-400" : "bg-input border-border")} border rounded-md`} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{resendIn > 0 ? `Resend in ${resendIn}s` : "Didn't get the code?"}</span>
