@@ -98,6 +98,11 @@ export default function DirectionsPage() {
     | { name: string; iata?: string; lat: number; lon: number; d: number }
     | null
   >(null)
+  const [locLoading, setLocLoading] = useState(false)
+  const [locError, setLocError] = useState<string | null>(null)
+  const [locAccuracy, setLocAccuracy] = useState<number | null>(null)
+  const [refinedMonastery, setRefinedMonastery] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null)
+  const [monasteryNote, setMonasteryNote] = useState<string | null>(null)
 
   // Require authentication; if not, redirect to login preserving return path
   useEffect(() => {
@@ -113,8 +118,8 @@ export default function DirectionsPage() {
     const controller = new AbortController()
     async function search(q: string) {
       const qn = (q || "").trim().toLowerCase()
-      // Do not show suggestions for the special placeholder 'My Location'
-      if (qn === "my location" || qn.startsWith("my location")) {
+      // Do not show suggestions for placeholder values
+      if (["my location","your location","approximate location"].some(p => qn === p || qn.startsWith(p))) {
         setSuggestions([])
         return
       }
@@ -252,7 +257,8 @@ export default function DirectionsPage() {
   if (!monastery) return notFound()
   if (!isAuthenticated) return null
 
-  const monasteryPoint: [number, number] = [monastery.coordinates.lat, monastery.coordinates.lng]
+  const baseMonasteryPoint: [number, number] = [monastery.coordinates.lat, monastery.coordinates.lng]
+  const monasteryPoint: [number, number] = refinedMonastery ? [refinedMonastery.lat, refinedMonastery.lng] : baseMonasteryPoint
   const userPoint: [number, number] | null = userLoc ? [userLoc.lat, userLoc.lon] : null
   const allPoints = [monasteryPoint, ...(userPoint ? [userPoint] : [])]
 
@@ -291,6 +297,123 @@ export default function DirectionsPage() {
   const displayAirport = nearestAirportDyn ?? nearestAirportFallback
 
   // Google maps marker config handled inline
+
+  async function acquireAccurateLocation() {
+    setLocError(null)
+    if (locLoading) return
+    // Fallback path if geolocation unsupported
+    if (!navigator.geolocation) {
+      setLocLoading(true)
+      try {
+        const resp = await fetch('/api/geolocate', { method: 'POST' })
+        if (!resp.ok) throw new Error('fallback-failed')
+        const data = await resp.json()
+        if (data?.location) {
+          setUserLoc({ lat: data.location.lat, lon: data.location.lng, label: 'Your Location' })
+          setLocAccuracy(data.accuracy ?? null)
+          setQuery('Your Location')
+        } else setLocError('Geolocation not supported.')
+      } catch { setLocError('Could not determine location.') }
+      setLocLoading(false)
+      return
+    }
+    setLocLoading(true)
+    // 1. QUICK FIRST FIX (allow cached position, short timeout)
+    let firstFix: GeolocationPosition | null = null
+    try {
+      firstFix = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 30000, // accept recent cached value
+        })
+      })
+      setUserLoc({ lat: firstFix.coords.latitude, lon: firstFix.coords.longitude, label: 'Your Location' })
+      setLocAccuracy(firstFix.coords.accuracy || null)
+      setQuery('Your Location')
+    } catch {
+      // ignore; we'll rely on refinement / fallback
+    }
+
+    // If we already have a reasonably good fix (<60m) stop spinner early
+    if (firstFix && (firstFix.coords.accuracy || 9999) < 60) {
+      setLocLoading(false)
+    }
+
+    // 2. BACKGROUND REFINEMENT using watchPosition for up to 8s or until accuracy <= 25m
+    let cleared = false
+    const deadline = Date.now() + 8000
+    const target = 25
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const acc = pos.coords.accuracy || 9999
+        // Only update if better than current
+        if (locAccuracy == null || (acc < locAccuracy - 5)) {
+          setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'Your Location' })
+          setLocAccuracy(acc)
+        }
+        if (acc <= target || Date.now() > deadline) {
+          navigator.geolocation.clearWatch(watchId)
+          if (!cleared) {
+            setLocLoading(false)
+            cleared = true
+          }
+        }
+      },
+      async (err) => {
+        navigator.geolocation.clearWatch(watchId)
+        if (!firstFix) {
+          // attempt server fallback
+            try {
+              const r = await fetch('/api/geolocate', { method: 'POST' })
+              if (r.ok) {
+                const data = await r.json()
+                if (data?.location) {
+                  setUserLoc({ lat: data.location.lat, lon: data.location.lng, label: 'Your Location' })
+                  setLocAccuracy(data.accuracy ?? null)
+                  setQuery('Your Location')
+                } else setLocError('Could not determine location.')
+              } else setLocError('Could not determine location.')
+            } catch { setLocError('Could not determine location.') }
+        }
+        if (!cleared) {
+          setLocLoading(false)
+          cleared = true
+        }
+        if (err?.code === 1) setLocError('Permission denied. Enable location access.')
+      },
+      { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
+    )
+
+    // Safety timeout: ensure loading state cleared
+    setTimeout(() => {
+      if (!cleared) {
+        navigator.geolocation.clearWatch(watchId)
+        setLocLoading(false)
+      }
+    }, 9000)
+  }
+
+  // Refine monastery coordinates via server geocode once (non-blocking)
+  useEffect(() => {
+    if (!monastery) return
+    const m = monastery
+    async function refine() {
+      try {
+        const query = `${m.name}, ${m.location}, Sikkim India`
+        const resp = await fetch(`/api/monastery-geocode?q=${encodeURIComponent(query)}`)
+        if (!resp.ok) return
+        const data = await resp.json()
+        if (data?.lat && data?.lng) {
+          const d = haversineDistanceKm({ lat: data.lat, lon: data.lng }, { lat: m.coordinates.lat, lon: m.coordinates.lng }) * 1000
+          if (d > 30) {
+            setRefinedMonastery({ lat: data.lat, lng: data.lng, accuracy: data.accuracyMeters })
+            setMonasteryNote(`Updated monastery location (+${d.toFixed(0)} m from dataset)`) }
+        }
+      } catch { /* ignore */ }
+    }
+    refine()
+  }, [monastery])
 
   return (
     <div className="min-h-screen bg-background">
@@ -357,20 +480,11 @@ export default function DirectionsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    if (!navigator.geolocation) return
-                    navigator.geolocation.getCurrentPosition(
-                      (pos) => {
-                        setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: "My Location" })
-                        setQuery("My Location")
-                      },
-                      () => {},
-                      { enableHighAccuracy: true, timeout: 8000 },
-                    )
-                  }}
+                  disabled={locLoading}
+                  onClick={acquireAccurateLocation}
                   className="flex items-center gap-2"
                 >
-                  <LocateFixed className="h-4 w-4" /> Use my location
+                  {locLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />} {locLoading ? 'Getting precise…' : 'Use my location'}
                 </Button>
                 {userLoc && (
                   <Button variant="ghost" onClick={() => { setUserLoc(null); setQuery("") }}>Clear</Button>
@@ -379,6 +493,12 @@ export default function DirectionsPage() {
             </div>
             {error && (
               <div className="mt-3 text-sm text-amber-600 flex items-center gap-2"><Info className="h-4 w-4" /> {error}</div>
+            )}
+            {locError && (
+              <div className="mt-2 text-sm text-red-600 flex items-center gap-2"><Info className="h-4 w-4" /> {locError}</div>
+            )}
+            {userLoc && locAccuracy != null && (
+              <div className="mt-2 text-xs text-muted-foreground">Accuracy: ±{Math.round(locAccuracy)} m{locAccuracy > 500 ? ' (approximate)' : ''}</div>
             )}
           </CardContent>
         </Card>
