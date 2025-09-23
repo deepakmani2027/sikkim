@@ -11,6 +11,29 @@ function haversineKm(a: {lat:number,lng:number}, b: {lat:number,lng:number}){
 	return 2 * R * Math.asin(Math.sqrt(h))
 }
 
+// Simple in-memory cache (per serverless instance) to reduce latency & quota.
+const distanceCache: Record<string,{ km:number; ts:number }> = {}
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+async function googleDrivingDistanceKm(from: {lat:number,lng:number}, to: {lat:number,lng:number}): Promise<number | null> {
+	const key = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+	if (!key) return null
+	try {
+		const url = new URL('https://maps.googleapis.com/maps/api/directions/json')
+		url.searchParams.set('origin', `${from.lat},${from.lng}`)
+		url.searchParams.set('destination', `${to.lat},${to.lng}`)
+		url.searchParams.set('mode', 'driving')
+		url.searchParams.set('key', key)
+		const resp = await fetch(url.toString(), { cache: 'no-store' })
+		if (!resp.ok) return null
+		const data: any = await resp.json()
+		const leg = data?.routes?.[0]?.legs?.[0]
+		const meters = leg?.distance?.value
+		if (typeof meters === 'number' && meters > 0) return meters / 1000
+		return null
+	} catch { return null }
+}
+
 export async function GET(req: Request){
 	try {
 		const url = new URL(req.url)
@@ -27,22 +50,16 @@ export async function GET(req: Request){
 		const from = { lat: fLat, lng: fLng }
 		const to = { lat: tLat, lng: tLng }
 
-		// Prefer OSRM driving route distance like Directions page
-		async function osrmDistanceKm(): Promise<number | null> {
-			try {
-				const fromStr = `${from.lng},${from.lat}` // OSRM expects lon,lat
-				const toStr = `${to.lng},${to.lat}`
-				const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${fromStr};${toStr}?overview=false`)
-				if (!r.ok) return null
-				const j: any = await r.json()
-				const d = j?.routes?.[0]?.distance
-				if (typeof d === 'number' && isFinite(d)) return d / 1000
-				return null
-			} catch { return null }
-		}
-
-		const osrmKm = await osrmDistanceKm()
-		const distanceKm = Math.max(0.5, osrmKm ?? haversineKm(from, to))
+    const cacheKey = `${from.lat.toFixed(4)},${from.lng.toFixed(4)}|${to.lat.toFixed(4)},${to.lng.toFixed(4)}`
+    let distanceKm: number | null = null
+    const cached = distanceCache[cacheKey]
+    if (cached && (Date.now() - cached.ts) < CACHE_TTL_MS){ distanceKm = cached.km }
+    if (distanceKm == null){
+      distanceKm = await googleDrivingDistanceKm(from, to)
+      if (distanceKm != null){ distanceCache[cacheKey] = { km: distanceKm, ts: Date.now() } }
+    }
+    if (distanceKm == null){ distanceKm = haversineKm(from, to) }
+    distanceKm = Math.max(0.5, distanceKm)
 
 		const vehicles = [
 			{ id: 'bike', label: 'bike', base: 40, perKm: 12, speedKmh: 35 },
@@ -63,7 +80,7 @@ export async function GET(req: Request){
 			}
 		})
 
-		return NextResponse.json({ from, to, distanceKm: Number(distanceKm.toFixed(2)), via: osrmKm != null ? 'osrm' : 'haversine', options })
+		return NextResponse.json({ from, to, distanceKm: Number(distanceKm.toFixed(2)), via: distanceCache[cacheKey] ? 'google-cached' : 'google-or-haversine', options })
 	} catch (e:any) {
 		return NextResponse.json({ error: 'unexpected error' }, { status: 500 })
 	}
