@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { KeyRound, Loader2, Mail, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { authService } from "@/lib/auth"
 import { AUTH_BG_IMAGES } from "@/lib/authBackgrounds"
 
@@ -16,7 +17,8 @@ export default function VerifyOtpPage() {
   // Background indices
   const [bgIndex, setBgIndex] = useState(0)
   const [prevIndex, setPrevIndex] = useState<number | null>(null)
-  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]) 
+  const [otp, setOtp] = useState("")
+  const [otpInvalid, setOtpInvalid] = useState(false)
   const [sendingOtp, setSendingOtp] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -66,87 +68,13 @@ export default function VerifyOtpPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const focusIndex = (i: number) => {
-    const el = inputsRef.current[i]
-    if (!el) return
-    requestAnimationFrame(() => {
-      el.focus()
-      el.select?.()
-    })
-  }
+  // InputOTP manages focus
 
-  const handleChange = (index: number, val: string) => {
-    const input = (val || "").replace(/\D/g, "")
-    if (!input) {
-      setOtpDigits((prev) => {
-        const next = [...prev]
-        next[index] = ""
-        return next
-      })
-      return
-    }
-    setOtpDigits((prev) => {
-      const next = [...prev]
-      next[index] = input[0]
-      return next
-    })
-    if (index < 5 && input) {
-      setTimeout(() => focusIndex(index + 1), 10)
-    }
-  }
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace") {
-      e.preventDefault()
-      if (otpDigits[index]) {
-        setOtpDigits((prev) => {
-          const next = [...prev]
-          next[index] = ""
-          return next
-        })
-      } else if (index > 0) {
-        focusIndex(index - 1)
-        setOtpDigits((prev) => {
-          const next = [...prev]
-          next[index - 1] = ""
-          return next
-        })
-      }
-    } else if (e.key === "ArrowLeft" && index > 0) {
-      e.preventDefault()
-      focusIndex(index - 1)
-    } else if (e.key === "ArrowRight" && index < 5) {
-      e.preventDefault()
-      focusIndex(index + 1)
-    } else if (e.key === "Delete") {
-      e.preventDefault()
-      setOtpDigits((prev) => {
-        const next = [...prev]
-        next[index] = ""
-        return next
-      })
-    }
-  }
-
-  const handlePaste = (startIndex: number, e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault()
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6 - startIndex)
-    if (!text) return
-    const arr = text.split("")
-    setOtpDigits((prev) => {
-      const next = [...prev]
-      for (let i = 0; i < arr.length && startIndex + i < 6; i++) {
-        next[startIndex + i] = arr[i]
-      }
-      return next
-    })
-    const nextIndex = Math.min(startIndex + arr.length, 5)
-    setTimeout(() => focusIndex(nextIndex), 10)
-  }
+  // No manual per-box handlers needed
 
   const verify = async () => {
     setError("")
-    const code = otpDigits.join("")
+  const code = otp
     if (!code || code.length < 6) {
       setError("Enter the 6-digit OTP")
       return
@@ -156,10 +84,11 @@ export default function VerifyOtpPage() {
       const resp = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, email }),
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
+        setOtpInvalid(true)
         throw new Error(data?.error || `Invalid OTP (${resp.status})`)
       }
 
@@ -261,30 +190,22 @@ export default function VerifyOtpPage() {
             <Label className="text-foreground flex items-center gap-2">
               <KeyRound className="h-4 w-4" /> Enter 6‑digit OTP
             </Label>
-            <div className="flex items-center justify-center gap-2">
-              {otpDigits.map((d, i) => (
-                <Input
-                  key={i}
-                  ref={(el) => (inputsRef.current[i] = el)}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={1}
-                  value={d}
-                  onChange={(e) => handleChange(i, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(i, e)}
-                  onPaste={(e) => handlePaste(i, e)}
-                  onFocus={(e) => e.currentTarget.select()}
-                  placeholder="•"
-                  className={`w-12 h-12 text-center text-xl font-semibold rounded-md transition-all duration-150 
-                    ${d ? "text-foreground" : "text-muted-foreground"} 
-                    ${d ? "bg-input border-border" : "bg-background/60 border-border/70"} 
-                    focus:ring-2 focus:ring-primary/50 focus:border-primary/60 focus:shadow-md focus:shadow-primary/10 
-                    tracking-widest`}
-                  aria-label={`OTP digit ${i + 1}`}
-                  autoComplete={i === 0 ? "one-time-code" : undefined}
-                  onKeyPress={(e) => { if (!/[0-9]/.test(e.key)) e.preventDefault() }}
-                />
-              ))}
+            <div className="flex items-center justify-center">
+              <InputOTP
+                maxLength={6}
+                value={otp}
+                onChange={(v) => { setOtp(v.replace(/\D/g, "")); setOtpInvalid(false) }}
+                containerClassName=""
+              >
+                <InputOTPGroup className="gap-2 sm:gap-3">
+                  <InputOTPSlot index={0} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                  <InputOTPSlot index={1} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                  <InputOTPSlot index={2} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                  <InputOTPSlot index={3} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                  <InputOTPSlot index={4} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                  <InputOTPSlot index={5} className={`${otpInvalid ? "border-red-500 bg-red-50 text-red-600" : "bg-input border-border"} border rounded-md`} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{resendIn > 0 ? `Resend in ${resendIn}s` : "Didn't get the code?"}</span>
