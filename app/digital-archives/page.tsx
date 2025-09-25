@@ -66,13 +66,13 @@ export default function DigitalArchivesPage() {
 
     // Branded header with logo + site title
     try {
-      const logoData = await imageToDataUrl("/placeholder-logo.png")
+  const logoData = await imageToDataUrl("/dharma-tech-logo.png")
       const logoW = 36
       const logoH = 36
       doc.addImage(logoData, "PNG", margin, y - 6, logoW, logoH)
       doc.setFont("helvetica", "bold")
       doc.setFontSize(16)
-      doc.text("Sikkim Monasteries", margin + logoW + 10, y + 10)
+  doc.text("DharmaTech", margin + logoW + 10, y + 10)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text("Sacred Heritage Explorer", margin + logoW + 10, y + 26)

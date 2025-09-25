@@ -10,14 +10,39 @@ import { Suspense } from "react"
 import "./globals.css"
 import "leaflet/dist/leaflet.css"
 import { Toaster } from "@/components/ui/sonner"
+import { Watermark } from "@/components/branding/Watermark"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sikkim Monasteries - Sacred Heritage Explorer",
+  title: "DharmaTech - Connecting Sikkim to the World",
   description:
     "Explore the sacred monasteries of Sikkim with immersive virtual tours, cultural insights, and research archives",
   generator: "v0.app",
+  icons: [
+    { rel: "icon", url: "/darma.png" },
+    { rel: "apple-touch-icon", url: "/darma.png" },
+  ],
+  openGraph: {
+    title: "DharmaTech - Connecting Sikkim to the World",
+    description:
+      "Explore the sacred monasteries of Sikkim with immersive virtual tours, cultural insights, and research archives",
+    images: [
+      {
+        url: "/darma.png",
+        width: 1500,
+        height: 700,
+        alt: "DharmaTech",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DharmaTech - Connecting Sikkim to the World",
+    description:
+      "Explore the sacred monasteries of Sikkim with immersive virtual tours, cultural insights, and research archives",
+    images: ["/darma.png"],
+  },
 }
 
 export default function RootLayout({
@@ -27,8 +52,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="icon" href="/darma.png" />
+      </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${inter.className}`}>
+        <Watermark />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <Suspense fallback={null}>
             <AuthProvider>{children}</AuthProvider>

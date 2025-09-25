@@ -9,7 +9,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Company Info */}
           <div className="lg:col-span-1">
-            <h3 className="font-display text-2xl font-bold mb-4">MonasteryView</h3>
+            <h3 className="font-display text-2xl font-bold mb-4">DharmaTech</h3>
             <p className="text-background/80 mb-6 leading-relaxed">
               Preserving Sikkim's sacred heritage through digital innovation. 
               We create immersive experiences that connect you with ancient wisdom 
@@ -19,11 +19,11 @@ const Footer = () => {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-secondary" />
-                <span>+91 3592 456789</span>
+                <span>+91 8709313047</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-secondary" />
-                <span>hello@monasteryview.com</span>
+                <span>verifymonastery@gmail.com</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-secondary mt-0.5" />

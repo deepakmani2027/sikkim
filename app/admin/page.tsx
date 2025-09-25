@@ -62,7 +62,7 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage content, users, and system settings for Sikkim Monasteries</p>
+          <p className="text-muted-foreground">Manage content, users, and system settings for DharmaTech</p>
         </div>
 
         {/* Admin Stats */}

@@ -6,6 +6,7 @@ import { LogOut, User, Menu, Settings } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { Logo } from "@/components/branding/Logo"
  
 
 export function Navbar() {
@@ -43,13 +44,11 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Title */}
-          <Link href="/dashboard" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-xl text-primary-foreground">🏛️</span>
-            </div>
+          <Link href="/dashboard" className="flex items-center space-x-4" aria-label="DharmaTech Dashboard Home">
+            <Logo size={56} responsive disableLink />
             <div>
-              <h1 className="text-xl font-bold text-card-foreground">Sikkim Monasteries</h1>
-              <p className="text-xs text-muted-foreground">Sacred Heritage Explorer</p>
+              <h1 className="text-xl font-bold text-card-foreground">DharmaTech</h1>
+              <p className="text-xs text-muted-foreground">Connecting Sikkim to the World</p>
             </div>
           </Link>
 

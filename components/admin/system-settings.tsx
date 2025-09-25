@@ -14,7 +14,7 @@ import { Settings, Database, Shield, Mail, Server, Save, RefreshCw } from "lucid
 
 export function SystemSettings() {
   const [settings, setSettings] = useState({
-    siteName: "Sikkim Monasteries",
+    siteName: "DharmaTech",
     siteDescription: "Sacred Heritage Explorer",
     maintenanceMode: false,
     userRegistration: true,
@@ -245,11 +245,11 @@ export function SystemSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Admin Email</Label>
-                  <Input type="email" defaultValue="admin@sikkimmonasteries.com" />
+                  <Input type="email" defaultValue="admin@dharmatech.com" />
                 </div>
                 <div>
                   <Label>Support Email</Label>
-                  <Input type="email" defaultValue="support@sikkimmonasteries.com" />
+                  <Input type="email" defaultValue="support@dharmatech.com" />
                 </div>
               </div>
             </CardContent>

@@ -1,4 +1,4 @@
-# Sikkim monasteries app
+# DharmaTech Platform
 
 *Automatically synced with your [v0.app](https://v0.app) deployments*
 
@@ -12,7 +12,7 @@ Any changes you make to your deployed app will be automatically pushed to this r
 
 ## Deployment
 
-Your project is live at:
+Original prototype deployment (legacy name) is live at:
 
 **[https://vercel.com/nagmaniprasad076-7981s-projects/v0-sikkim-monasteries-app-3x](https://vercel.com/nagmaniprasad076-7981s-projects/v0-sikkim-monasteries-app-3x)**
 
@@ -28,6 +28,10 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository# sikkim
+
+## Branding
+
+Place the circular Dharma Tech logo file at `public/dharma-tech-logo.png` (recommended 512x512 PNG with transparent background). The `Logo` component, top navigation bar, and PDF exports will automatically use it. If the file is missing an emoji fallback appears. Replace the image file to update branding; name must stay the same unless you also update the import paths.
 
 ## Google Scholar search (SerpAPI proxy)
 

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import { Loader2, Eye, EyeOff, Mail, Lock, ShieldCheck } from "lucide-react"
+import { Logo } from "@/components/branding/Logo"
 import { toast } from "sonner"
 
 interface LoginFormProps {
@@ -72,8 +73,8 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
       <Card className="w-full max-w-md mx-auto bg-card/80 backdrop-blur-12xl border-[0.5px] border-border/50 shadow-floating">
         <CardHeader className="text-center space-y-3">
-          <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center shadow-soft">
-            <div className="text-2xl text-primary-foreground">🏛️</div>
+          <div className="mx-auto">
+            <Logo size={90} />
           </div>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4" /> Secure access

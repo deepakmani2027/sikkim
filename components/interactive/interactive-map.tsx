@@ -89,7 +89,7 @@ export function InteractiveMap() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" />
-              Interactive Map of Sikkim Monasteries
+                Interactive Map of DharmaTech
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">

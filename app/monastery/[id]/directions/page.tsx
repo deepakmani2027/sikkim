@@ -546,7 +546,6 @@ export default function DirectionsPage() {
                   <div className="text-muted-foreground text-sm">{routeDriving ? (routeDriving.distance / 1000).toFixed(1) : distanceKm?.toFixed(1) ?? "—"} km</div>
                   <div className="text-lg font-semibold">{formatDuration(drivingDuration)}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setActiveMode("driving")}>Show on map</Button>
                     <Button size="sm" asChild>
                       <a
                         href={`https://www.google.com/maps/dir/?api=1&origin=${userPoint ? userPoint.join(",") : ""}&destination=${monasteryPoint.join(",")}&travelmode=driving`}
@@ -573,7 +572,6 @@ export default function DirectionsPage() {
                   <div className="text-muted-foreground text-sm">{routeWalking ? (routeWalking.distance / 1000).toFixed(1) : distanceKm?.toFixed(1) ?? "—"} km</div>
                   <div className="text-lg font-semibold">{formatDuration(walkingDuration)}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setActiveMode("walking")}>Show on map</Button>
                     <Button size="sm" asChild>
                       <a
                         href={`https://www.google.com/maps/dir/?api=1&origin=${userPoint ? userPoint.join(",") : ""}&destination=${monasteryPoint.join(",")}&travelmode=walking`}
@@ -623,9 +621,6 @@ export default function DirectionsPage() {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" /> Back to details
-          </Button>
-          <Button asChild>
-            <Link href={`https://www.openstreetmap.org/directions?from=&to=${monasteryPoint[0]},${monasteryPoint[1]}`} target="_blank">Open in OpenStreetMap</Link>
           </Button>
         </div>
       </main>

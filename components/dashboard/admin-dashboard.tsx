@@ -65,9 +65,9 @@ export function AdminDashboard() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-accent/10 to-primary/10 rounded-lg p-6 monastery-pattern">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Admin Dashboard</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">DharmaTech Admin Dashboard</h2>
         <p className="text-muted-foreground mb-4">
-          Manage content, users, and system settings for the Sikkim Monasteries platform.
+          Manage DharmaTech platform data and settings.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button className="bg-accent hover:bg-accent/90">

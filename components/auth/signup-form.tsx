@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/hooks/use-auth"
 import { Loader2, Eye, EyeOff, Mail, User2, Lock, BadgeCheck } from "lucide-react"
+import { Logo } from "@/components/branding/Logo"
 import { toast } from "sonner"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -119,8 +120,8 @@ export function SignupForm({ onToggleMode }: SignupFormProps) {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: "easeOut" }}>
       <Card className="w-full max-w-md mx-auto bg-card/80 backdrop-blur-12xl border-[0.5px] border-border/50 shadow-floating">
         <CardHeader className="text-center space-y-3">
-          <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center shadow-soft">
-            <div className="text-2xl text-primary-foreground">🏛️</div>
+          <div className="mx-auto">
+            <Logo size={90} />
           </div>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <BadgeCheck className="h-4 w-4" /> Create your account

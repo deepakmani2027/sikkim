@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const user = process.env.SMTP_USER
     const pass = process.env.SMTP_PASS
     const fromEmail = process.env.SMTP_SENDER_EMAIL || user
-    const fromName = process.env.SMTP_SENDER_NAME || "Sikkim Monasteries"
+  const fromName = process.env.SMTP_SENDER_NAME || "DharmaTech"
     const dryRun = (process.env.SMTP_DRY_RUN || "").toString().trim() === "1" || (process.env.SMTP_DRY_RUN || "").toString().toLowerCase() === "true"
 
     // Development helper: allow bypassing SMTP to unblock local testing
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     const subject = "Your verification code"
     const html = `
       <div style="font-family:system-ui,Segoe UI,Helvetica,Arial,sans-serif;max-width:520px;margin:auto;padding:24px">
-        <h2 style="margin:0 0 12px;color:#111">Sikkim Monasteries</h2>
+        <h2 style="margin:0 0 12px;color:#111">DharmaTech</h2>
         <p style="margin:0 0 16px;color:#333">Use the code below to verify your email. It expires in 10 minutes.</p>
         <div style="font-size:32px;letter-spacing:6px;font-weight:700;background:#f7f7f7;padding:12px 16px;border-radius:10px;text-align:center">${code}</div>
         <p style="margin-top:16px;color:#666;font-size:12px">If you didn't request this, you can ignore this email.</p>
