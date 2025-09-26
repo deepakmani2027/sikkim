@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
-import { LogOut, User, Menu, Settings } from "lucide-react"
+import { LogOut, User, Menu } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
@@ -12,6 +12,8 @@ import { Logo } from "@/components/branding/Logo"
 export function Navbar() {
   const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const canSeeArchives = user?.role === "researcher" || user?.role === "admin"
+  const canSee = user?.role === "tourist" 
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -44,8 +46,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Title */}
-          <Link href="/dashboard" className="flex items-center space-x-4" aria-label="DharmaTech Dashboard Home">
-            <Logo size={56} responsive disableLink />
+          <Link href="/dashboard" className="flex items-center space-x-4">
+            <Logo size={56} responsive />
             <div>
               <h1 className="text-xl font-bold text-card-foreground">DharmaTech</h1>
               <p className="text-xs text-muted-foreground">Connecting Sikkim to the World</p>
@@ -63,21 +65,27 @@ export function Navbar() {
               </div>
             )}
 
+              {canSee && (
               <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
                 <Link href="/search">
                   <span className="hidden sm:inline">Search</span>
                 </Link>
               </Button>
-              <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
-                <Link href="/digital-archives">
-                  <span className="hidden sm:inline">Digital Archives</span>
-                </Link>
-              </Button>
+              )}
+              {canSeeArchives && (
+                <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
+                  <Link href="/digital-archives">
+                    <span className="hidden sm:inline">Digital Archives</span>
+                  </Link>
+                </Button>
+              )}
+              {canSee && (
               <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
                 <Link href="/virtual-tours">
                   <span className="hidden sm:inline">Virtual Tours</span>
                 </Link>
               </Button>
+              )}
               <ThemeToggle />
               <Button asChild variant="ghost" size="sm" className="flex items-center space-x-2">
                 <Link href={user ? `/account/${user.id}` : "/auth"}>
@@ -109,18 +117,17 @@ export function Navbar() {
             )}
             {user?.role === "admin" && (
               <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
-                <Link href="/admin">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Admin Panel
-                </Link>
+                <Link href="/admin">Admin Panel</Link>
               </Button>
             )}
             <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
               <Link href="/search">Search</Link>
             </Button>
-            <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
-              <Link href="/digital-archives">Digital Archives</Link>
-            </Button>
+            {canSeeArchives && (
+              <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
+                <Link href="/digital-archives">Digital Archives</Link>
+              </Button>
+            )}
             <Button asChild variant="ghost" size="sm" className="w-full justify-start mb-2">
               <Link href="/virtual-tours">Virtual Tours</Link>
             </Button>

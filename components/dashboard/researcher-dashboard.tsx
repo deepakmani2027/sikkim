@@ -4,12 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Search, FileText, Download, BookOpen, Filter, Clock, Archive } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
+import Image from "next/image"
 import { ScholarSearch } from "@/components/research/ScholarSearch"
 
 export function ResearcherDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [active, setActive] = useState<(typeof recentArchives)[number] | null>(null)
 
   const recentArchives = [
     {
@@ -21,6 +26,7 @@ export function ResearcherDashboard() {
       size: "2.3 MB",
       downloads: 45,
       restricted: false,
+      image: "/rumtek-monastery-sikkim-buddhist-temple.jpg",
     },
     {
       id: 2,
@@ -31,6 +37,7 @@ export function ResearcherDashboard() {
       size: "5.7 MB",
       downloads: 23,
       restricted: true,
+      image: "/pemayangtse-monastery-sikkim-mountain-view.jpg",
     },
     {
       id: 3,
@@ -41,6 +48,7 @@ export function ResearcherDashboard() {
       size: "1.8 MB",
       downloads: 67,
       restricted: false,
+      image: "/tashiding-monastery-bumchu-ceremony.jpg",
     },
   ]
 
@@ -61,6 +69,82 @@ export function ResearcherDashboard() {
         return "bg-accent/10 text-accent"
       default:
         return "bg-muted text-muted-foreground"
+    }
+  }
+
+  function onPreview(archive: (typeof recentArchives)[number]) {
+    setActive(archive)
+    setPreviewOpen(true)
+  }
+
+  async function imageToDataUrl(src: string): Promise<string> {
+    const url = src.startsWith("http") ? src : `${window.location.origin}${src}`
+    const res = await fetch(url)
+    const blob = await res.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  async function downloadArchive(archive: (typeof recentArchives)[number]) {
+    // Lightweight branded PDF export (title + metadata)
+    try {
+      const { jsPDF } = await import("jspdf")
+      const doc = new jsPDF({ orientation: "p", unit: "pt", format: "a4" })
+      const margin = 40
+      let y = margin
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(18)
+      doc.text(archive.title, margin, y)
+      y += 24
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(12)
+      const meta = [
+        ["Type", archive.type],
+        ["Period", archive.period],
+        ["Monastery", `${archive.monastery} Monastery`],
+        ["File Size", archive.size],
+        ["Downloads", String(archive.downloads)],
+      ]
+      meta.forEach(([k, v]) => {
+        doc.text(`${k}: ${v}`, margin, y)
+        y += 18
+      })
+
+      // Add image preview if available
+      if (archive.image) {
+        try {
+          const dataUrl = await imageToDataUrl(archive.image)
+          const pageWidth = doc.internal.pageSize.getWidth()
+          const contentWidth = pageWidth - margin * 2
+          // Determine dimensions while keeping aspect ratio
+          const tmp = document.createElement("img")
+          const loaded: Promise<void> = new Promise((r) => (tmp.onload = () => r()))
+          tmp.src = dataUrl
+          await loaded
+          const maxH = 260
+          const ratio = tmp.width / tmp.height
+          let w = contentWidth
+          let h = Math.round(w / ratio)
+          if (h > maxH) {
+            h = maxH
+            w = Math.round(h * ratio)
+          }
+          const x = margin + (contentWidth - w) / 2
+          y += 8
+          doc.addImage(dataUrl, "JPEG", x, y, w, h)
+          y += h + 10
+        } catch {
+          // ignore image failure
+        }
+      }
+      const filename = `${archive.title.replace(/\s+/g, "-").toLowerCase()}.pdf`
+      doc.save(filename)
+      toast.success("Download started")
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to download")
     }
   }
 
@@ -160,16 +244,16 @@ export function ResearcherDashboard() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" onClick={() => onPreview(archive)}>
                     Preview
                   </Button>
                   {!archive.restricted ? (
-                    <Button size="sm">
+                    <Button size="sm" onClick={() => downloadArchive(archive)}>
                       <Download className="mr-1 h-4 w-4" />
                       Download
                     </Button>
                   ) : (
-                    <Button size="sm" variant="secondary">
+                    <Button size="sm" variant="secondary" onClick={() => toast.info("Request sent. You'll be notified on approval.")}>
                       Request Access
                     </Button>
                   )}
@@ -179,6 +263,74 @@ export function ResearcherDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          {active && (
+            <div className="space-y-4">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-extrabold">{active.title}</DialogTitle>
+                <DialogDescription>
+                  {active.period} • {active.monastery} Monastery
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className={getTypeColor(active.type)}>{active.type}</Badge>
+                {active.restricted && (
+                  <Badge variant="destructive">Restricted</Badge>
+                )}
+              </div>
+
+              {/* Image preview */}
+              {active.image && (
+                <div className="relative h-56 sm:h-72 md:h-80 rounded overflow-hidden">
+                  <Image src={active.image} alt={active.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 60vw" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Period</span>
+                  <span className="font-medium">{active.period}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Monastery</span>
+                  <span className="font-medium">{active.monastery} Monastery</span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">File Size</span>
+                  <span className="font-medium">{active.size}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">Downloads</span>
+                  <span className="font-medium">{active.downloads}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {!active.restricted ? (
+                  <Button onClick={() => downloadArchive(active)} className="flex-1">
+                    <Download className="mr-2 h-4 w-4" /> Download
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => toast.info("Request sent. You'll be notified on approval.")}
+                    className="flex-1"
+                  >
+                    Request Access
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setPreviewOpen(false)} className="flex-1">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Citation Tools */}
       <Card>

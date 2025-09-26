@@ -2,15 +2,19 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Navbar } from "@/components/layout/navbar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Download, Share2, FileText, ImageIcon, Book, ScrollText } from "lucide-react"
+import { Download, Share2, FileText, ImageIcon, Book, ScrollText, Search as SearchIcon, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { archiveItems, type ArchiveItem } from "@/lib/archives"
+import { useAuth } from "@/hooks/use-auth"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // archiveItems + type now sourced from lib/archives
 
@@ -36,13 +40,36 @@ function statusClass(status: ArchiveItem["status"]) {
 export default function DigitalArchivesPage() {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState<ArchiveItem | null>(null)
+  const [query, setQuery] = useState("")
+  const [typeFilter, setTypeFilter] = useState<ArchiveItem["type"] | "All">("All")
+
+  const { user, isAuthenticated } = useAuth()
+  const isResearcher = user?.role === "researcher" || user?.role === "admin"
 
   const items = useMemo(() => archiveItems, [])
 
-  function onPreview(item: ArchiveItem) {
+  // Treat some items as restricted for demo: murals and documents require researcher
+  const isRestricted = useCallback((item: ArchiveItem) => {
+    return item.type === "Mural" || item.type === "Document"
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return items.filter((it) => {
+      const matchesQ = !q
+        || it.title.toLowerCase().includes(q)
+        || it.monastery.toLowerCase().includes(q)
+        || it.description.toLowerCase().includes(q)
+        || it.century.toLowerCase().includes(q)
+      const matchesType = typeFilter === "All" || it.type === typeFilter
+      return matchesQ && matchesType
+    })
+  }, [items, query, typeFilter])
+
+  const onPreview = useCallback((item: ArchiveItem) => {
     setActive(item)
     setOpen(true)
-  }
+  }, [])
 
   async function imageToDataUrl(src: string): Promise<string> {
     const url = src.startsWith("http") ? src : `${window.location.origin}${src}`
@@ -66,13 +93,13 @@ export default function DigitalArchivesPage() {
 
     // Branded header with logo + site title
     try {
-  const logoData = await imageToDataUrl("/dharma-tech-logo.png")
+      const logoData = await imageToDataUrl("/main.jpeg")
       const logoW = 36
       const logoH = 36
-      doc.addImage(logoData, "PNG", margin, y - 6, logoW, logoH)
+      doc.addImage(logoData, "JPEG", margin, y - 6, logoW, logoH)
       doc.setFont("helvetica", "bold")
       doc.setFontSize(16)
-  doc.text("DharmaTech", margin + logoW + 10, y + 10)
+      doc.text("DharmaTech", margin + logoW + 10, y + 10)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text("Sacred Heritage Explorer", margin + logoW + 10, y + 26)
@@ -177,21 +204,64 @@ export default function DigitalArchivesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 sm:space-y-10">
-        <header className="text-left sm:text-center space-y-3">
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-primary">Digital Archives</h1>
-          <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-0 sm:mx-auto">
-            Ancient manuscripts (pechas), thangkas, murals, and rare scriptures — scanned and preserved in high‑quality digital format.
-          </p>
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <header className="space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-primary">Research Archives</h1>
+              <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl">
+                Access digitized manuscripts, thangkas, murals, and scriptures preserved for research.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isResearcher ? (
+                <Badge className="bg-emerald-600 text-white">Researcher Access</Badge>
+              ) : (
+                <Badge variant="secondary">Guest Mode</Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Search + Type filter (enhanced) */}
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr,220px]">
+            <div className="relative">
+              <Label htmlFor="archive-search" className="sr-only">Search</Label>
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="archive-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search archives, monasteries, or centuries"
+                className="h-11 pl-10 rounded-xl bg-card/50 border-border hover:bg-card/70 transition-colors focus-visible:ring-2 focus-visible:ring-primary/30"
+              />
+            </div>
+            <div className="relative">
+              <Label htmlFor="type-filter" className="sr-only">Type</Label>
+              <Filter className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                <SelectTrigger id="type-filter" className="h-11 pl-10 rounded-xl bg-card/50 border-border hover:bg-card/70 transition-colors focus:ring-2 focus:ring-primary/30">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="All">All Types</SelectItem>
+                  <SelectItem value="Manuscript">Manuscript</SelectItem>
+                  <SelectItem value="Mural">Mural</SelectItem>
+                  <SelectItem value="Photo">Photo</SelectItem>
+                  <SelectItem value="Document">Document</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </header>
 
         <section
-          className="grid gap-4 sm:gap-6 md:gap-7 grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(340px,1fr))] md:[grid-template-columns:repeat(auto-fit,minmax(460px,1fr))]"
+          className="grid items-stretch gap-3 sm:gap-4 md:gap-5 grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(300px,1fr))] md:[grid-template-columns:repeat(auto-fit,minmax(360px,1fr))]"
           id="collection"
         >
-          {items.map((it) => (
-            <Card key={it.id} className="overflow-hidden border border-border/60 p-0">
-              <div className="relative h-56 sm:h-72 md:h-80">
+          {filtered.map((it) => (
+            <Card key={it.id} className="relative overflow-hidden border border-border/60 p-0 rounded-2xl shadow-sm h-full flex flex-col">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600" />
+              <div className="relative h-48 sm:h-60 md:h-64">
                 <Image src={it.image} alt={it.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 33vw" />
 
                 {/* Type badge */}
@@ -201,20 +271,27 @@ export default function DigitalArchivesPage() {
                     <span className="uppercase tracking-wide">{it.type}</span>
                   </span>
                 </div>
-                {/* Century badge */}
+                {/* Century + Restriction badge */}
                 <div className="absolute right-2 top-2">
-                  <span className="inline-flex items-center rounded-full bg-amber-500 text-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-amber-600/70 shadow">
-                    {it.century}
-                  </span>
+                  <div className="flex gap-1">
+                    {isRestricted(it) && (
+                      <span className="inline-flex items-center rounded-full bg-red-600 text-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-red-700/70 shadow">
+                        Restricted
+                      </span>
+                    )}
+                    <span className="inline-flex items-center rounded-full bg-amber-500 text-white px-2 py-0.5 text-[11px] font-semibold ring-1 ring-amber-600/70 shadow">
+                      {it.century}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <CardContent className=" pb-4">
-                <h3 className="text-2xl sm:text-[28px] font-bold leading-tight">{it.title}</h3>
-                <p className="mt-1 text-sm sm:text-base text-muted-foreground">{it.monastery}</p>
-                <p className="mt-3 text-sm sm:text-base text-muted-foreground line-clamp-3">{it.description}</p>
+              <CardContent className="pb-3 pt-3 sm:pt-4 flex-1 flex flex-col">
+                <h3 className="text-xl sm:text-2xl font-extrabold leading-tight tracking-tight">{it.title}</h3>
+                <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">{it.monastery}</p>
+                <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{it.description}</p>
 
-                <div className="mt-4 space-y-1 text-sm">
+                <div className="mt-3 space-y-1 text-[13px]">
                   <div className="flex items-center gap-2"><span className="font-semibold">Language:</span><span>{it.language}</span></div>
                   <div className="flex items-center gap-2"><span className="font-semibold">Material:</span><span>{it.material}</span></div>
                   <div className="flex items-center gap-2">
@@ -223,13 +300,25 @@ export default function DigitalArchivesPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center gap-2">
-                  <Button className="grow py-6 text-base" onClick={() => onPreview(it)}>Preview</Button>
-                  <Button variant="outline" size="icon" className="h-12 w-12" asChild>
-                    <a href={it.image} download>
-                      <Download className="h-4 w-4" />
-                    </a>
-                  </Button>
+                <div className="mt-auto pt-3 flex items-center gap-2">
+                  <Button className="grow h-10 text-sm sm:text-base" onClick={() => onPreview(it)}>Preview</Button>
+                  {isRestricted(it) && !isResearcher ? (
+                    <Button
+                      variant="destructive"
+                      className="h-10 text-sm sm:text-base"
+                      onClick={() => toast.info("Request sent. You'll be notified on approval.")}
+                    >
+                      Request Access
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="h-10 text-sm sm:text-base"
+                      onClick={() => downloadArchiveAsPDF(it)}
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Download PDF
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -237,7 +326,7 @@ export default function DigitalArchivesPage() {
         </section>
 
         {/* Benefits strip */}
-        <section className="rounded-3xl border border-border p-6 sm:p-8 bg-card">
+        <section className="rounded-2xl border border-border p-4 sm:p-6 bg-card">
           <div className="grid md:grid-cols-3 gap-6">
             <div>
               <h3 className="text-xl font-semibold">Prevention</h3>
@@ -297,9 +386,20 @@ export default function DigitalArchivesPage() {
               </div>
 
               <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row gap-3">
-                <Button className="grow h-14 text-base sm:text-lg" onClick={() => downloadArchiveAsPDF(active)}>
-                  <Download className="mr-2 h-5 w-5" /> Download High Resolution
-                </Button>
+                {(!isRestricted(active) || isResearcher) && (
+                  <Button className="grow h-14 text-base sm:text-lg" onClick={() => downloadArchiveAsPDF(active)}>
+                    <Download className="mr-2 h-5 w-5" /> Download High Resolution
+                  </Button>
+                )}
+                {isRestricted(active) && !isResearcher && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => toast.info("Request sent. You'll be notified on approval.")}
+                    className="grow h-14 text-base sm:text-lg"
+                  >
+                    Request Access
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => onShare(active)} className="grow h-14 text-base sm:text-lg">
                   <Share2 className="mr-2 h-5 w-5" /> Share Archive
                 </Button>
